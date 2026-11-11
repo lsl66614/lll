@@ -128,6 +128,23 @@ class TraceStoreTests(unittest.TestCase):
         self.assertEqual(data["status"], "error")
         self.assertEqual(data["error"], "没有启用的 AI")
 
+    def test_finish_keeps_cross_and_cache_fields(self):
+        """可靠度卡依赖 result.cross / cached / provider，三者都不能在解析时丢。"""
+        trace = self.store.begin(title="题")
+        response = JSONResponse({
+            "code": 0,
+            "data": {
+                "answer": "A", "source": "ai", "provider": "本地题库",
+                "match": "exact", "cached": True, "cross": "agree",
+                "consensus": "unit", "confidence": 0.9,
+            },
+        })
+        self.store.finish(trace, response=response)
+        result = self.store.recent(limit=1)["traces"][0]["result"]
+        self.assertEqual(result["cross"], "agree")
+        self.assertEqual(result["provider"], "本地题库")
+        self.assertTrue(result["cached"])
+
     def test_finish_marks_running_models_cancelled(self):
         trace = self.store.begin(title="题")
         self.store.model_start({"id": "1", "name": "慢模型"})

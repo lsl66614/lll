@@ -369,6 +369,7 @@ class TraceStore:
                         "match": _clip(data.get("match"), 60),
                         "confidence": data.get("confidence"),
                         "consensus": _clip(data.get("consensus"), 40),
+                        "cross": _clip(data.get("cross"), 40),
                         "risk": data.get("risk"),
                         "cached": bool(data.get("cached")),
                         "elapsed_ms": data.get("elapsed_ms"),

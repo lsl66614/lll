@@ -659,17 +659,43 @@ details.step[open] { padding-bottom: 16px; }
   .mrow .mtok { display: none; }
 }
 @media (max-width: 980px) {
-  main { grid-template-columns: 258px minmax(0, 1fr); }
-  aside.right { display: none; }
+  main {
+    grid-template-columns: 258px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  aside.left { grid-row: 1; }
+  section.view { grid-row: 1; }
+  /* 右栏不再整块消失：挪到主区下方一行，投票/元数据仍可查。 */
+  aside.right {
+    grid-column: 1 / -1; grid-row: 2;
+    display: flex; gap: 22px; align-items: flex-start;
+    border-left: 0; border-top: 1px solid var(--line);
+    padding: 14px 18px 18px; overflow: visible;
+  }
+  aside.right:empty { display: none; }
+  aside.right .card { flex: 1; min-width: 0; margin: 0; }
 }
 @media (max-width: 860px) {
   main { grid-template-columns: 1fr; }
-  aside.left { display: none; }
   .metrics { display: none; }
+  header .navBtn { display: inline-flex; }
   section.view { padding: 16px 14px 48px; }
   .mrow { grid-template-columns: minmax(0, 1.3fr) 62px 56px; }
   .mrow .mconf, .mrow .mms { display: none; }
+  /* 左栏收成侧滑抽屉，由顶栏「轨迹」按钮开关，否则窄屏没法换轨迹。 */
+  aside.left {
+    display: block; position: fixed; top: 62px; bottom: 0; left: 0;
+    width: min(320px, 86vw); z-index: 30; border-right: 1px solid var(--line);
+    transform: translateX(-100%); transition: transform .18s ease;
+  }
+  body.nav-open aside.left { transform: none; }
+  body.nav-open::after {
+    content: ""; position: fixed; inset: 62px 0 0 0;
+    background: rgba(0, 0, 0, .52); z-index: 25;
+  }
+  aside.right { grid-column: auto; grid-row: auto; padding: 14px; }
 }
+.navBtn { display: none; }
 </style>
 </head>
 <body>
@@ -681,6 +707,7 @@ details.step[open] { padding-bottom: 16px; }
   <div class="live" id="live"><span class="dot"></span><span id="liveText">连接中</span></div>
   <div class="metrics" id="metrics"></div>
   <div class="actions">
+    <button id="navBtn" class="ghost navBtn" title="打开轨迹列表" aria-label="打开轨迹列表">轨迹</button>
     <button id="themeBtn" title="切换明暗外观" aria-label="切换明暗外观">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.6 9.4A5.8 5.8 0 0 1 6.6 2.4a5.8 5.8 0 1 0 7 7Z"/></svg>
     </button>
@@ -743,7 +770,7 @@ details.step[open] { padding-bottom: 16px; }
   var STAGE_LABEL = {
     official: '官方题库', bank: '题库匹配', snapshot: '选项快照', memory: '答题记忆',
     cache: '答案缓存', prompt: '提示词准备', ai: 'AI 作答', 'ai-result': 'AI 结果',
-    vote: '模型投票', cross: '交叉验证', finish: '完成'
+    vote: '模型投票', cross: '交叉验证', finish: '完成', batch: '批量调用'
   };
   var STATUS_LABEL = {
     hit: '命中', miss: '未命中', skip: '跳过', start: '开始', running: '进行中',
@@ -752,9 +779,10 @@ details.step[open] { padding-bottom: 16px; }
     cancelled: '已取消'
   };
   var SOURCE_LABEL = {
-    official: '官方答案', bank: '题库', memory: '答题记忆', cache: '缓存', ai: 'AI 作答'
+    official: '官方答案', bank: '题库', memory: '答题记忆', cache: '缓存',
+    ai: 'AI 作答', snapshot: '选项快照'
   };
-  var SRC_CLASS = { official: 'ok', bank: 'ok', memory: 'ok', cache: 'warn', ai: 'run' };
+  var SRC_CLASS = { official: 'ok', bank: 'ok', memory: 'ok', cache: 'warn', ai: 'run', snapshot: 'warn' };
 
   var state = {
     traces: [], selected: null, follow: true, paused: false,
@@ -784,8 +812,20 @@ details.step[open] { padding-bottom: 16px; }
   }
   function badge(text, cls) { return '<span class="badge ' + (cls || '') + '">' + esc(text) + '</span>'; }
   function srcClass(src) { return SRC_CLASS[src] || ''; }
+
+  /* 结果里的 source 只有 official/ai/memory/snapshot；
+     缓存复用和本地题库命中都靠 cached/provider 派生，否则「题库 / 缓存」筛选永远为空。 */
+  function derivedSource(trace) {
+    var r = trace.result || {};
+    if (!r) return '';
+    if (r.provider === '本地题库') return 'bank';
+    if (r.source === 'memory' || r.provider === '答题记忆') return 'memory';
+    if (r.provider === '选项快照') return 'snapshot';
+    if (r.cached && r.source !== 'official') return 'cache';
+    return r.source || '';
+  }
   function srcLabel(trace) {
-    var src = trace.result && trace.result.source ? trace.result.source : '';
+    var src = derivedSource(trace);
     if (trace.status === 'running') return '作答中';
     if (trace.status === 'error') return '失败';
     return SOURCE_LABEL[src] || src || '完成';
@@ -856,8 +896,7 @@ details.step[open] { padding-bottom: 16px; }
     var list = state.traces.slice();
     if (state.source !== 'all') {
       list = list.filter(function (t) {
-        var src = t.result && t.result.source ? t.result.source : '';
-        return src === state.source;
+        return derivedSource(t) === state.source;
       });
     }
     if (state.status !== 'all') {
@@ -910,7 +949,7 @@ details.step[open] { padding-bottom: 16px; }
       lastBatch = t.batch_id || null;
       var sel = state.selected && state.selected.id === t.id ? ' sel' : '';
       var tone = t.status === 'running' ? 'run' : (t.status === 'error' ? 'err' : 'ok');
-      var src = t.result && t.result.source ? t.result.source : '';
+      var src = derivedSource(t);
       var tokens = t.total_tokens ? num(t.total_tokens) + ' tok' : '';
       parts.push('<div class="item' + sel + '" data-id="' + esc(t.id) + '">' +
         '<div class="l1"><span class="dot-status ' + tone + '"></span>' +
@@ -1260,13 +1299,19 @@ details.step[open] { padding-bottom: 16px; }
       rows + '</div></div>';
   }
 
-  var CHAIN_ORDER = ['official', 'bank', 'snapshot', 'memory', 'cache', 'prompt', 'ai', 'vote', 'cross'];
+  /* 批量请求多一个「批量调用」阶段；单题不显示这一格，避免恒为「未经过」。 */
+  function chainOrder(t) {
+    var order = ['official', 'bank', 'snapshot', 'memory', 'cache', 'prompt'];
+    if (t.qtype === 'batch') order.push('batch');
+    order.push('ai', 'vote', 'cross');
+    return order;
+  }
 
   function renderChain(t) {
     var stages = t.stages || [];
     var by = {};
     stages.forEach(function (s) { if (!by[s.name]) by[s.name] = s; });
-    var items = CHAIN_ORDER.map(function (name) {
+    var items = chainOrder(t).map(function (name) {
       var s = by[name];
       var tone = s ? statusTone(s.status) : 'mute';
       var cls = !s ? 'skip' : (s.status === 'hit' ? 'hit' : (s.status === 'miss' ? 'miss' : tone));
@@ -1547,7 +1592,7 @@ details.step[open] { padding-bottom: 16px; }
     }
     var notes = [];
     if (vote.share != null) notes.push('份额 ' + pct(vote.share));
-    if (vote.models != null) notes.push(vote.models + ' 个模型');
+    if (vote.models != null) notes.push('支持模型 ' + vote.models + ' 个');
     if (vote.rounds) notes.push(vote.rounds + ' 轮');
     if (vote.samples != null) notes.push(vote.samples + ' 次采样');
     if (vote.passed === true) notes.push('≥2 次一致');
@@ -1743,7 +1788,20 @@ details.step[open] { padding-bottom: 16px; }
     var node = event.target.closest('.item');
     if (!node) return;
     var found = state.traces.find(function (t) { return t.id === node.getAttribute('data-id'); });
-    if (found) selectTrace(found, false);
+    if (found) {
+      selectTrace(found, false);
+      document.body.classList.remove('nav-open');
+    }
+  });
+
+  $('navBtn').addEventListener('click', function (event) {
+    event.stopPropagation();
+    document.body.classList.toggle('nav-open');
+  });
+  document.addEventListener('click', function (event) {
+    if (!document.body.classList.contains('nav-open')) return;
+    if (event.target.closest('aside.left') || event.target.closest('#navBtn')) return;
+    document.body.classList.remove('nav-open');
   });
 
   $('followBtn').addEventListener('click', function () {
@@ -1798,7 +1856,10 @@ details.step[open] { padding-bottom: 16px; }
   $('drawerClose').addEventListener('click', closeDrawer);
   $('mask').addEventListener('click', closeDrawer);
   document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') closeDrawer();
+    if (event.key === 'Escape') {
+      closeDrawer();
+      document.body.classList.remove('nav-open');
+    }
   });
 
   /* ---------------------------------------------------------------- boot */
@@ -1806,10 +1867,14 @@ details.step[open] { padding-bottom: 16px; }
   try { initialSeq = Number(new URLSearchParams(location.search).get('seq')) || null; } catch (err) {}
   poll();
   if (initialSeq) {
-    setTimeout(function () {
+    // 首屏 poll 是异步的：固定 400ms 只试一次，慢请求时会静默失效。
+    // 改成最多重试 20 次（约 6s），找到就停。
+    var deeplinkTries = 0;
+    (function pickInitial() {
       var found = state.traces.find(function (t) { return t.seq === initialSeq; });
-      if (found) selectTrace(found, false);
-    }, 400);
+      if (found) { selectTrace(found, false); return; }
+      if (++deeplinkTries < 20) setTimeout(pickInitial, 300);
+    })();
   }
   setInterval(poll, 700);
 
