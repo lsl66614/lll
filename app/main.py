@@ -1098,6 +1098,12 @@ async def _unit_ask(
         "models": len(canon_models.get(choice.winner, ())),
         "share": choice.share,
         "rounds": rounds,
+        "tie_break": choice.tie_break or "",
+        "weights": dict(choice.scores or {}),
+        "providers": list(dict.fromkeys(
+            provider["name"] for provider, answer, _confidence, _error in results
+            if answer and canonical_answer(qtype, answer) == choice.winner
+        )),
         "errors": errors[:4],
     })
     trace_store.stage(
@@ -1931,6 +1937,8 @@ async def _resolve_ai(
                     "share": unit_share, "rounds": meta.get("unit_rounds") or 1,
                     "models": unit_models,
                     "tie_break": meta.get("unit_tie_break") or "",
+                    "weights": meta.get("unit_weights") or {},
+                    "providers": meta.get("unit_providers") or [],
                     "errors": meta.get("unit_errors") or []}
             trace_store.set_vote(dict(vote, kind="unit"))
             # 与首次作答分支同一口径：必须至少两个独立模型一致且份额过半，
@@ -2092,6 +2100,9 @@ async def _resolve_ai(
                 "samples": len(_unit_ready(providers)[:3]),
                 "share": share, "rounds": meta.get("unit_rounds") or 1,
                 "models": models,
+                "tie_break": meta.get("unit_tie_break") or "",
+                "weights": meta.get("unit_weights") or {},
+                "providers": meta.get("unit_providers") or [],
                 "errors": meta.get("unit_errors") or []}
         trace_store.set_vote(dict(vote, kind="unit"))
         # AI 共识只入库待确认，不自动采纳；等后续再次一致再升级

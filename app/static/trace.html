@@ -353,6 +353,12 @@ aside.right .card h3::before { background: var(--line-strong); }
   color: var(--dim); font: 9px/1.6 var(--mono); margin-top: 9px;
   letter-spacing: .03em;
 }
+.vote-sub {
+  color: var(--dim); font: 8.5px/1.4 var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; margin-top: 6px;
+}
+.vote-row.wt .bar i { background: var(--muted); }
+.vote-row.wt .num { width: 30px; }
 
 /* ---------------------------------------------------------------- timeline */
 .tl {
@@ -532,6 +538,70 @@ aside.right .card h3::before { background: var(--line-strong); }
 .verdict .v-risk.warn { border-left-color: var(--amber); color: var(--amber); }
 .verdict .v-risk.ok { border-left-color: var(--green); color: var(--green); }
 
+/* ---------------------------------------------------------------- reliability */
+.card.rel { border-left: 2px solid var(--line-strong); }
+.rel .rel-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 2px 0 12px; }
+.rel-grade {
+  flex: none; font: 600 10px/1 var(--mono); letter-spacing: .16em;
+  padding: 6px 9px; border: 1px solid currentColor;
+}
+.rel-grade.high { color: var(--green); }
+.rel-grade.mid { color: var(--amber); }
+.rel-grade.low, .rel-grade.bad { color: var(--red); }
+.rel-grade.run { color: var(--muted); }
+.rel-why { color: var(--text); font: 12.5px/1.7 var(--sans); flex: 1 1 300px; }
+.rel-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft);
+}
+.rel-f { background: var(--bg-elev); padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rel-f .k {
+  color: var(--dim); font: 8.5px/1.2 var(--mono);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.rel-f .v { color: var(--muted); font: 10.5px/1.55 var(--mono); word-break: break-word; }
+.rel-f .v b { color: var(--text); font-weight: 600; }
+.rel-f .v.ok { color: var(--green); }
+.rel-f .v.warn { color: var(--amber); }
+.rel-f .v.err { color: var(--red); }
+.rel-rule { margin-top: 9px; color: var(--dim); font: 9px/1.7 var(--mono); letter-spacing: .02em; }
+.rel-rule b { color: var(--text); font-weight: 600; }
+
+/* ---------------------------------------------------------------- model table */
+.mtab { border: 1px solid var(--line-soft); font: 10.5px/1.55 var(--mono); }
+.mrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 72px 62px 52px 62px 70px;
+  gap: 10px; align-items: baseline;
+  padding: 6px 10px; border-top: 1px solid var(--line-soft);
+}
+.mrow:first-child { border-top: 0; }
+.mrow.mhead {
+  background: rgba(255, 255, 255, .018); color: var(--dim);
+  font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase;
+}
+.mrow .mname { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .mname small { color: var(--dim); margin-left: 6px; font-size: 8.5px; }
+.mrow .mans { color: var(--green); font-weight: 600; text-align: center; word-break: break-all; }
+.mrow .mmark { text-align: center; }
+.mrow .mconf, .mrow .mms, .mrow .mtok {
+  color: var(--dim); text-align: right; font-variant-numeric: tabular-nums;
+}
+.mrow.dissent { background: rgba(255, 107, 107, .055); }
+.mrow.dissent .mans { color: var(--red); }
+.mrow.error .mans { color: var(--red); font-weight: 400; }
+.mrow.empty .mans { color: var(--dim); font-weight: 400; }
+.mtag {
+  display: inline-block; padding: 1px 5px; border: 1px solid currentColor;
+  font: 8.5px/1.5 var(--mono); letter-spacing: .04em;
+}
+.mtag.agree { color: var(--green); }
+.mtag.dissent { color: var(--red); }
+.mtag.error { color: var(--red); }
+.mtag.empty { color: var(--dim); }
+.mtag.run { color: var(--amber); }
+.step-head .mtag { margin-left: 2px; }
+
 /* ---------------------------------------------------------------- chain */
 .chain { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
 .chain li {
@@ -584,6 +654,9 @@ details.step[open] { padding-bottom: 16px; }
   .metric { min-width: 68px; padding: 0 11px; }
   /* 窄屏先砍掉「平均 Token」，它的标签比数字宽，留着会挤出格子 */
   .metric:nth-child(n+7) { display: none; }
+  /* 模型对照表先收掉 Token 列，名字列仍然优先 */
+  .mrow { grid-template-columns: minmax(0, 1.5fr) 70px 60px 50px 60px; }
+  .mrow .mtok { display: none; }
 }
 @media (max-width: 980px) {
   main { grid-template-columns: 258px minmax(0, 1fr); }
@@ -594,6 +667,8 @@ details.step[open] { padding-bottom: 16px; }
   aside.left { display: none; }
   .metrics { display: none; }
   section.view { padding: 16px 14px 48px; }
+  .mrow { grid-template-columns: minmax(0, 1.3fr) 62px 56px; }
+  .mrow .mconf, .mrow .mms { display: none; }
 }
 </style>
 </head>
@@ -894,6 +969,297 @@ details.step[open] { padding-bottom: 16px; }
   }
 
   /* 链路一行：命中哪一步、卡在哪一步，一眼看完。 */
+  /* ---------------------------------------------------------------- reliability */
+  function normAns(v) {
+    var s = String(v == null ? '' : v).replace(/\s+/g, '').toUpperCase();
+    if (/^[A-H]{2,}$/.test(s)) s = s.split('').sort().join('');
+    return s;
+  }
+  function sameAnswer(a, b) {
+    if (a == null || b == null || a === '' || b === '') return false;
+    return normAns(a) === normAns(b);
+  }
+  function inputTruncated(t) {
+    var inp = t.input || {};
+    var titleLen = Number(inp.title_len) || 0;
+    var titleModel = inp.title_model != null ? Number(inp.title_model) : titleLen;
+    var optCount = Number(inp.options) || 0;
+    var optModel = inp.options_model != null ? Number(inp.options_model) : optCount;
+    return (titleLen > 0 && titleModel < titleLen) || (optCount > 0 && optModel < optCount);
+  }
+  function modelVerdict(t, m) {
+    if (m.status === 'running') return 'run';
+    if (m.status === 'cancelled') return 'cancelled';
+    if (m.status === 'error') return 'error';
+    if (!m.answer) return 'empty';
+    var final = (t.result || {}).answer;
+    return final ? (sameAnswer(m.answer, final) ? 'agree' : 'dissent') : 'empty';
+  }
+  var VERDICT_TAG = {
+    agree: '一致', dissent: '异议', error: '失败',
+    empty: '无答案', run: '作答中', cancelled: '已取消'
+  };
+  var TIE_LABEL = { weight: '加权分', count: '票数', confidence: '置信度', order: '提交顺序' };
+  var CROSS_LABEL = {
+    agree: '一致', disagree: '不一致', error: '失败', skip: '跳过', 'unit-vote': '单元投票一致'
+  };
+
+  function uniqueAnswers(models) {
+    var seen = {}, out = [];
+    models.forEach(function (m) {
+      var key = normAns(m.answer);
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      out.push(m.answer);
+    });
+    return out;
+  }
+
+  /* 只按页面可见事实判级：来源 / 共识 / 异议 / 输入完整性。
+     不生成 0-100 的可信度分数，避免看起来像准确率。 */
+  function assessReliability(t) {
+    var r = t.result || {};
+    var models = t.models || [];
+    var answered = models.filter(function (m) {
+      return m.answer && m.status !== 'error' && m.status !== 'cancelled';
+    });
+    var errors = models.filter(function (m) { return m.status === 'error'; });
+    var cancelled = models.filter(function (m) { return m.status === 'cancelled'; });
+    var agree = answered.filter(function (m) { return sameAnswer(m.answer, r.answer); });
+    var dissent = answered.filter(function (m) { return !sameAnswer(m.answer, r.answer); });
+    var vote = t.vote || {};
+    var share = vote.share != null && isFinite(Number(vote.share)) ? Number(vote.share) : null;
+    var src = String(r.source || '');
+    var trunc = inputTruncated(t);
+    var a = {
+      level: 'mid', why: '', factors: [],
+      answered: answered.length, agree: agree.length, dissent: dissent.length,
+      errors: errors.length, cancelled: cancelled.length, truncated: trunc
+    };
+    var fpush = function (k, v, tone) { a.factors.push({ k: k, v: v, tone: tone || '' }); };
+
+    if (t.status === 'running') {
+      a.level = 'run';
+      a.why = '还在作答：已收到 ' + answered.length + ' 个模型答案，链路结束后再判可靠度。';
+      fpush('进度', answered.length + ' / ' + models.length + ' 个模型已返回', '');
+      return a;
+    }
+    if (t.status === 'error') {
+      a.level = 'bad';
+      a.why = '链路失败：' + (t.error || '没有拿到答案') + '。';
+      fpush('错误', t.error || '未知错误', 'err');
+      return a;
+    }
+
+    if (t.qtype === 'batch') {
+      var total = Number(r.items != null ? r.items : (t.batch_items || []).length) || 0;
+      var resolved = Number(r.resolved != null ? r.resolved : 0) || 0;
+      a.level = total && resolved >= total ? 'high' : (resolved > 0 ? 'mid' : 'low');
+      a.why = total
+        ? ('本批 ' + total + ' 题解析出 ' + resolved + ' 题' + (resolved >= total
+            ? '，全部返回。' : '，还有 ' + (total - resolved) + ' 题没有答案。'))
+        : '批次没有题目明细。';
+      fpush('批次', resolved + ' / ' + total + ' 题有答案', resolved >= total ? 'ok' : 'warn');
+      return a;
+    }
+
+    var srcText = SOURCE_LABEL[src] || src || '未知';
+    if (r.provider) srcText += ' · ' + r.provider;
+    fpush('答案来源', srcText,
+      (src === 'official' || src === 'bank') ? 'ok' : (src === 'ai' ? '' : 'warn'));
+
+    /* 投票口径优先：unit 投票可能跨轮，票数不等于 trace 里的模型条目数。 */
+    var votes = vote.votes || {};
+    var vkeys = Object.keys(votes);
+    var winVotes = 0, otherVotes = 0, otherText = [];
+    vkeys.forEach(function (k) {
+      var n = Number(votes[k]) || 0;
+      if (sameAnswer(k, r.answer)) winVotes += n;
+      else { otherVotes += n; otherText.push(k + ' ' + n + ' 票'); }
+    });
+    var hasVotes = vkeys.length > 0;
+
+    if (hasVotes) {
+      var voteText = r.answer + ' ' + winVotes + ' 票';
+      if (otherVotes) voteText += ' · 其他 ' + otherText.join(' / ');
+      if (share != null) voteText += ' · 份额 ' + pct(share);
+      fpush('模型投票', voteText, winVotes >= 2 ? 'ok' : (otherVotes ? 'warn' : ''));
+    } else if (answered.length) {
+      var consensus = agree.length + ' / ' + answered.length + ' 个模型与最终答案一致';
+      if (share != null) consensus += ' · 份额 ' + pct(share);
+      fpush('模型共识', consensus, agree.length >= 2 ? 'ok' : (dissent.length ? 'warn' : ''));
+    } else {
+      fpush('模型共识', '本次没有模型给出可解析答案', 'warn');
+    }
+
+    var weights = vote.weights || {};
+    var wkeys = Object.keys(weights);
+    if (wkeys.length) {
+      wkeys.sort(function (x, y) {
+        return (Number(weights[y]) || 0) - (Number(weights[x]) || 0);
+      });
+      fpush('加权票', wkeys.slice(0, 3).map(function (k) {
+        return k + ' ' + Number(weights[k]).toFixed(2);
+      }).join(' · ') + (vote.tie_break
+        ? ' · 决胜 ' + (TIE_LABEL[vote.tie_break] || vote.tie_break) : ''), '');
+    } else if (vote.tie_break) {
+      fpush('加权票', '决胜 ' + (TIE_LABEL[vote.tie_break] || vote.tie_break), '');
+    } else {
+      fpush('加权票', '没有加权投票记录', '');
+    }
+
+    var cross = r.cross || (vote.kind === 'cross' ? vote.cross : '');
+    var crossTone = !cross ? '' : ((cross === 'agree' || cross === 'unit-vote')
+      ? 'ok' : (cross === 'disagree' ? 'err' : 'warn'));
+    fpush('交叉验证', cross
+      ? (CROSS_LABEL[cross] || statusLabel(cross) || String(cross))
+      : (r.consensus ? String(r.consensus) : '未启用'), crossTone);
+
+    var inp = t.input || {};
+    var titleLen = Number(inp.title_len) || 0;
+    var titleModel = inp.title_model != null ? Number(inp.title_model) : titleLen;
+    if (trunc) {
+      fpush('输入完整性', '题干 ' + titleLen + ' 字 → 模型收到 ' + titleModel + ' 字（已截断）', 'warn');
+    } else {
+      fpush('输入完整性', '题干与选项完整进入模型', 'ok');
+    }
+
+    fpush('模型状态', answered.length + ' 个作答 · ' + errors.length + ' 个失败 · ' +
+      cancelled.length + ' 个取消', errors.length ? 'warn' : 'ok');
+
+    var conf = r.confidence != null ? Number(r.confidence) : null;
+    if (conf != null) {
+      fpush(answered.length ? '模型自评置信度' : '来源自带置信度',
+        conf.toFixed(2) + '（不是准确率）', '');
+    }
+
+    var strongSrc = src === 'official' || src === 'bank';
+    var multi = hasVotes
+      ? (winVotes >= 2 && (share == null || share >= 0.5))
+      : (agree.length >= 2 && (share == null || share >= 0.5));
+    var conflict = hasVotes
+      ? (otherVotes > 0 && otherVotes >= winVotes)
+      : (dissent.length > 0 && dissent.length >= agree.length);
+
+    if (strongSrc) {
+      a.level = 'high';
+      a.why = '答案来自' + (src === 'official' ? '官方答案' : '题库') + '，不是本次模型推断' +
+        (answered.length ? '；另有 ' + answered.length + ' 个模型作答可对照。' : '。');
+    } else if (multi && hasVotes) {
+      a.level = 'high';
+      a.why = '投票 ' + winVotes + ' : ' + otherVotes + ' 支持 ' + r.answer +
+        (share != null ? '（份额 ' + pct(share) + '）' : '') + '，按多数票/加权分取。' +
+        (otherVotes ? ' 反对票：' + otherText.join('、') + '。' : ' 没有反对票。');
+    } else if (multi) {
+      a.level = 'high';
+      a.why = answered.length + ' 个模型里 ' + agree.length + ' 个给出 ' + r.answer +
+        (share != null ? '（份额 ' + pct(share) + '）' : '') +
+        (dissent.length ? '，' + dissent.length + ' 个给出 ' + uniqueAnswers(dissent).join(' / ') + '，按多数票取。'
+                        : '，没有异议。');
+    } else if (String(r.cross || '') === 'agree' || String(r.cross || '') === 'unit-vote') {
+      a.level = 'high';
+      a.why = '交叉验证结果一致，返回 ' + r.answer + '。';
+    } else if (r.cached && !answered.length) {
+      a.level = 'mid';
+      a.why = '本次直接复用缓存答案，没有重新调用模型；可信度取决于最初写入缓存的来源。';
+    } else if (!answered.length) {
+      a.level = 'low';
+      a.why = '没有任何模型给出可解析答案，链路仍返回了 ' + (r.answer || '空答案') + '，需要人工确认。';
+    } else if (conflict && hasVotes) {
+      a.level = 'low';
+      a.why = '票数没有拉开：' + r.answer + ' ' + winVotes + ' 票 vs ' +
+        otherText.join(' / ') + '，最终仍返回 ' + r.answer + '，需要人工确认。';
+    } else if (conflict) {
+      a.level = 'low';
+      a.why = '证据冲突：' + agree.length + ' 个模型支持 ' + r.answer + '，' +
+        dissent.length + ' 个反对（' + uniqueAnswers(dissent).join(' / ') + '）。';
+    } else if (answered.length === 1) {
+      a.level = 'mid';
+      a.why = '只有 1 个模型作答（' + answered[0].name + '），没有第二意见可交叉核对。';
+    } else if (dissent.length) {
+      a.level = 'mid';
+      a.why = agree.length + ' 个模型支持 ' + r.answer + '，' + dissent.length +
+        ' 个给出不同答案（' + uniqueAnswers(dissent).join(' / ') + '），最终按票数/权重取胜。';
+    } else {
+      a.level = 'mid';
+      a.why = answered.length + ' 个模型一致给出 ' + r.answer + '，但没有官方/题库来源或交叉验证背书。';
+    }
+
+    if (r.risk === true && a.level === 'high') {
+      a.level = 'mid';
+      a.why += ' 链路标记了 risk。';
+    } else if (r.risk === true && a.level !== 'low') {
+      a.level = 'low';
+      a.why += ' 链路已标记 risk。';
+    }
+    if (trunc && a.level === 'high') {
+      a.level = 'mid';
+      a.why += ' 但题干被截断，模型看到的不一定是完整题。';
+    }
+    if (conf != null && conf < 0.6 && a.level === 'high' && !strongSrc) {
+      a.level = 'mid';
+      a.why += ' 模型自评置信度只有 ' + conf.toFixed(2) + '。';
+    }
+    return a;
+  }
+
+  var REL_LABEL = { high: '可靠度高', mid: '可靠度中', low: '可靠度低', bad: '作答失败', run: '作答中' };
+
+  function renderReliability(t) {
+    var a = assessReliability(t);
+    var factors = a.factors.map(function (f) {
+      return '<div class="rel-f"><span class="k">' + esc(f.k) + '</span>' +
+        '<span class="v' + (f.tone ? ' ' + f.tone : '') + '">' + esc(f.v) + '</span></div>';
+    }).join('');
+    return '<div class="card rel"><h3>答案可靠度' +
+      '<span class="hint">按来源 / 共识 / 异议 / 输入完整性判级，不是模型自评分</span></h3>' +
+      '<div class="rel-head"><span class="rel-grade ' + a.level + '">' +
+      esc(REL_LABEL[a.level]) + '</span><span class="rel-why">' + esc(a.why) + '</span></div>' +
+      (factors ? '<div class="rel-grid">' + factors + '</div>' : '') +
+      '<div class="rel-rule">判级顺序：官方/题库 &gt; 多模型一致（≥2 且过半）&gt; 交叉验证 &gt; ' +
+      '单模型自评；出现异议、risk 标记或题干截断都会降级。</div></div>';
+  }
+
+  function renderModelTable(t) {
+    if (t.qtype === 'batch') return '';
+    var models = t.models || [];
+    if (!models.length) {
+      return '<div class="card"><h3>模型做题对照</h3>' +
+        '<div class="empty-note">本次没有调用模型：官方 / 题库 / 缓存直接命中。</div></div>';
+    }
+    var r = t.result || {};
+    var a = assessReliability(t);
+    var rows = models.map(function (m, i) {
+      var v = modelVerdict(t, m);
+      var tone = v === 'dissent' ? 'dissent' : (v === 'error' ? 'error' : (v === 'empty' ? 'empty' : ''));
+      var ans = m.status === 'error' ? '—'
+        : (m.status === 'running' ? '…' : (m.answer || '—'));
+      var conf = m.confidence != null ? Number(m.confidence).toFixed(2) : '—';
+      var pn = (m.provider_name && m.provider_name !== m.name && !/^[0-9]+$/.test(m.provider_name))
+        ? '<small>' + esc(m.provider_name) + '</small>' : '';
+      return '<div class="mrow ' + tone + '" data-kind="model" data-i="' + i + '">' +
+        '<span class="mname" title="' + esc(m.model || m.name) + '">' + esc(m.name) + pn + '</span>' +
+        '<span class="mans">' + esc(ans) + '</span>' +
+        '<span class="mmark"><span class="mtag ' + v + '">' +
+        esc(VERDICT_TAG[v] || v) + '</span></span>' +
+        '<span class="mconf">' + esc(conf) + '</span>' +
+        '<span class="mms">' + ms(m.elapsed_ms) + '</span>' +
+        '<span class="mtok">' + (m.total_tokens != null ? num(m.total_tokens) : '—') + '</span>' +
+        '</div>';
+    }).join('');
+    var base = r.answer
+      ? '<div class="rel-rule">最终答案 <b>' + esc(r.answer) + '</b>' +
+        (r.provider ? ' · 来自 ' + esc(r.provider) : '') +
+        ' · 一致 ' + a.agree + ' / 异议 ' + a.dissent +
+        (a.errors ? ' / 失败 ' + a.errors : '') + '</div>'
+      : '';
+    return '<div class="card"><h3>模型做题对照' +
+      '<span class="hint">谁赞成、谁反对、谁没答上来；点行看原始输出</span></h3>' +
+      base + '<div class="mtab"><div class="mrow mhead"><span>模型</span><span>答案</span>' +
+      '<span>判定</span><span>置信</span><span>耗时</span><span class="mtok">Token</span></div>' +
+      rows + '</div></div>';
+  }
+
   var CHAIN_ORDER = ['official', 'bank', 'snapshot', 'memory', 'cache', 'prompt', 'ai', 'vote', 'cross'];
 
   function renderChain(t) {
@@ -930,6 +1296,7 @@ details.step[open] { padding-bottom: 16px; }
     var rows = models.map(function (m, i) {
       var tone = m.status === 'running' ? 'run'
         : (m.status === 'error' ? 'err' : (m.status === 'cancelled' ? 'warn' : 'ok'));
+      var v = modelVerdict(t, m);
       var ansCls = m.status === 'error' ? ' bad' : (m.answer ? '' : ' pending');
       var ans = m.status === 'error' ? '调用失败'
         : (m.answer ? '答案 <b>' + esc(m.answer) + '</b>'
@@ -950,6 +1317,8 @@ details.step[open] { padding-bottom: 16px; }
         ((winner === m || models.length === 1 || (!winner && i === 0)) ? ' open' : '') + '>' +
         '<summary class="step-head"><span class="dot-status ' + tone + '"></span>' +
         '<span class="sname">' + esc(m.name) + '</span>' +
+        ((v === 'dissent' || v === 'error') ? '<span class="mtag ' + v + '">' +
+          esc(VERDICT_TAG[v]) + '</span>' : '') +
         (meta.length ? '<span class="smeta">' + esc(meta.join(' · ')) + '</span>' : '') +
         '<span class="sans' + ansCls + '">' + ans + '</span></summary>' + body + '</details>';
     }).join('');
@@ -1040,7 +1409,8 @@ details.step[open] { padding-bottom: 16px; }
   }
 
   function renderSolve(t) {
-    return renderVerdictBar(t) + renderQuestionCard(t) + renderChain(t) + renderSteps(t);
+    return renderVerdictBar(t) + renderReliability(t) + renderQuestionCard(t) +
+      renderChain(t) + renderModelTable(t) + renderSteps(t);
   }
 
   /* ---------------------------------------------------------------- waterfall */
@@ -1157,6 +1527,24 @@ details.step[open] { padding-bottom: 16px; }
         '<span class="bar"><i style="width:' + Math.max(4, count / max * 100) + '%"></i></span>' +
         '<span class="num">' + count + '</span></div>';
     }).join('');
+    var weights = vote.weights || {};
+    var wkeys = Object.keys(weights).sort(function (x, y) {
+      return (Number(weights[y]) || 0) - (Number(weights[x]) || 0);
+    });
+    var wrows = '';
+    if (wkeys.length) {
+      var wmax = Math.max.apply(null, wkeys.map(function (k) {
+        return Number(weights[k]) || 0;
+      }).concat([1]));
+      wrows = '<div class="vote-sub">加权分 · 自评置信度累加</div>' +
+        wkeys.map(function (key) {
+          var score = Number(weights[key]) || 0;
+          return '<div class="vote-row wt"><span class="lab" title="' + esc(key) + '">' +
+            esc(key) + '</span><span class="bar"><i style="width:' +
+            Math.max(4, score / wmax * 100) + '%"></i></span>' +
+            '<span class="num">' + score.toFixed(2) + '</span></div>';
+        }).join('');
+    }
     var notes = [];
     if (vote.share != null) notes.push('份额 ' + pct(vote.share));
     if (vote.models != null) notes.push(vote.models + ' 个模型');
@@ -1164,7 +1552,9 @@ details.step[open] { padding-bottom: 16px; }
     if (vote.samples != null) notes.push(vote.samples + ' 次采样');
     if (vote.passed === true) notes.push('≥2 次一致');
     else if (vote.passed === false) notes.push('未达 2 次一致');
-    return '<div class="card"><h3>投票明细</h3><div class="votes">' + rows + '</div>' +
+    if (vote.tie_break) notes.push('决胜 ' + (TIE_LABEL[vote.tie_break] || vote.tie_break));
+    if ((vote.providers || []).length) notes.push('支持 ' + vote.providers.slice(0, 4).join(' / '));
+    return '<div class="card"><h3>投票明细</h3><div class="votes">' + rows + wrows + '</div>' +
       (notes.length ? '<div class="vote-note">' + esc(notes.join(' · ')) + '</div>' : '') + '</div>';
   }
 
