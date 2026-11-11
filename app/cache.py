@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import os
+import random
 import sqlite3
 import threading
 import time
 
+from . import config
 from .bank import DEFAULT_SUBJECT
 from .parsing import parse_options
 
@@ -40,7 +42,7 @@ class AnswerCache:
             """
         )
         columns = {row[1] for row in self._conn.execute("PRAGMA table_info(answers)")}
-        for name in ("qtype", "options", "subject", "image_hash"):
+        for name in ("qtype", "options", "subject", "image_hash", "source", "confidence"):
             if name not in columns:
                 self._conn.execute(f"ALTER TABLE answers ADD COLUMN {name} TEXT")
         self._conn.execute(
@@ -78,17 +80,81 @@ class AnswerCache:
     def get(self, key: str) -> dict | None:
         with self._lock:
             row = self._conn.execute(
-                "SELECT answer, provider, created, qtype FROM answers WHERE key = ?", (key,)
+                "SELECT answer, provider, created, qtype, source, confidence "
+                "FROM answers WHERE key = ?",
+                (key,),
             ).fetchone()
             if not row:
                 return None
-            answer, provider, created, qtype = row
+            answer, provider, created, qtype, source, confidence = row
             ttl = self._ttl_for(qtype)
             if ttl and (time.time() - created) > ttl:
                 self._conn.execute("DELETE FROM answers WHERE key = ?", (key,))
                 self._conn.commit()
                 return None
-            return {"answer": answer, "provider": provider, "created": created}
+            try:
+                confidence_value = float(confidence) if confidence not in (None, "") else None
+            except (TypeError, ValueError):
+                confidence_value = None
+            return {
+                "answer": answer,
+                "provider": provider,
+                "created": created,
+                "source": source or "",
+                "confidence": confidence_value,
+            }
+
+    @staticmethod
+    def _retry_allowed(row: dict, floor_value: float) -> bool:
+        """只有 AI 来源、且置信度低于阈值的记录才值得重问。
+
+        题库/官方答案命中永不重问——那是权威来源，换掉只会更差。
+        """
+        source = str(row.get("source") or "").strip().lower()
+        if source not in ("ai", "unit-vote"):
+            return False
+        confidence = row.get("confidence")
+        if confidence is None:
+            return False
+        try:
+            value = float(confidence)
+        except (TypeError, ValueError):
+            return False
+        return value < floor_value
+
+    def lookup_for_answer(
+        self,
+        key: str,
+        retry_prob: float | None = None,
+        min_confidence: float | None = None,
+    ) -> tuple[dict | None, bool]:
+        """返回 ``(命中记录, 是否因低置信被要求重解)``。
+
+        命中后按 ``retry_prob`` 概率决定是否忽略这次命中（重解结果会覆盖旧值），
+        用来避免一次低质量答案被缓存永久钉死。
+        """
+        row = self.get(key)
+        if row is None:
+            return None, False
+        prob = config.CACHE_RETRY_PROBABILITY if retry_prob is None else float(retry_prob)
+        floor_value = (
+            config.CACHE_RETRY_MIN_CONFIDENCE if min_confidence is None
+            else float(min_confidence)
+        )
+        if prob <= 0 or not self._retry_allowed(row, floor_value):
+            return row, False
+        if random.random() < prob:
+            return None, True
+        return row, False
+
+    def get_for_answer(
+        self,
+        key: str,
+        retry_prob: float | None = None,
+        min_confidence: float | None = None,
+    ) -> dict | None:
+        """``lookup_for_answer`` 的简化版：只关心拿到的记录（可能为 None）。"""
+        return self.lookup_for_answer(key, retry_prob, min_confidence)[0]
 
     def set(
         self,
@@ -100,13 +166,17 @@ class AnswerCache:
         options: str | None = None,
         subject: str | None = None,
         image_hash: str | None = None,
+        source: str = "",
+        confidence: float | None = None,
     ) -> None:
         with self._lock:
             self._conn.execute(
                 "INSERT OR REPLACE INTO answers "
-                "(key, question, answer, provider, qtype, options, subject, image_hash, created) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (key, question[:500], answer, provider, qtype, options, subject, image_hash, time.time()),
+                "(key, question, answer, provider, qtype, options, subject, image_hash, "
+                "source, confidence, created) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (key, question[:500], answer, provider, qtype, options, subject,
+                 image_hash, source, confidence, time.time()),
             )
             self._conn.commit()
 

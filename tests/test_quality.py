@@ -118,6 +118,42 @@ class WeightTests(unittest.TestCase):
         self.assertIsNone(result.winner)
         self.assertEqual(result.share, 0.0)
 
+    def test_weighted_choice_tie_break_weight(self):
+        result = weighted_choice([("A", "甲", 0.9), ("B", "甲", 0.1)])
+        self.assertEqual(result.winner, "A")
+        self.assertEqual(result.tie_break, "weight")
+
+    def test_weighted_choice_tie_break_count(self):
+        def fake_score(rows, name, confidence, use_confidence):
+            return {"甲": 1.0, "乙": 0.5}[name]
+
+        with mock.patch("app.quality.sample_score", side_effect=fake_score):
+            result = weighted_choice([
+                ("A", "甲", None),
+                ("B", "乙", None),
+                ("B", "乙", None),
+            ])
+        self.assertEqual(result.winner, "B")
+        self.assertEqual(result.tie_break, "count")
+
+    def test_weighted_choice_tie_break_confidence(self):
+        with mock.patch("app.quality.sample_score", return_value=1.0):
+            result = weighted_choice([
+                ("A", "甲", 0.9),
+                ("B", "乙", 0.2),
+            ])
+        self.assertEqual(result.winner, "A")
+        self.assertEqual(result.tie_break, "confidence")
+
+    def test_weighted_choice_tie_break_order(self):
+        with mock.patch("app.quality.sample_score", return_value=1.0):
+            result = weighted_choice([
+                ("A", "甲", None),
+                ("B", "乙", None),
+            ])
+        self.assertEqual(result.winner, "A")
+        self.assertEqual(result.tie_break, "order")
+
     def test_low_confidence(self):
         self.assertFalse(is_low_confidence(None, 0.6))
         self.assertFalse(is_low_confidence(0.3, 0))

@@ -212,6 +212,7 @@ class Stats:
         self.path = path
         self.total = 0
         self.cached = 0
+        self.cache_retry = 0
         self.bank_hits = 0
         self.memory_hits = 0
         self.web_search = 0
@@ -236,6 +237,7 @@ class Stats:
                 data = json.load(fp)
             self.total = int(data.get("total") or 0)
             self.cached = int(data.get("cached") or 0)
+            self.cache_retry = int(data.get("cache_retry") or 0)
             self.bank_hits = int(data.get("bank_hits") or 0)
             self.memory_hits = int(data.get("memory_hits") or 0)
             self.web_search = int(data.get("web_search") or 0)
@@ -263,6 +265,7 @@ class Stats:
             payload = {
                 "total": self.total,
                 "cached": self.cached,
+                "cache_retry": self.cache_retry,
                 "bank_hits": self.bank_hits,
                 "memory_hits": self.memory_hits,
                 "failovers": self.failovers,
@@ -1102,6 +1105,7 @@ async def _unit_ask(
         "unit_models": len(canon_models.get(choice.winner, ())),
         "unit_share": choice.share,
         "unit_weights": choice.scores,
+        "unit_tie_break": choice.tie_break,
         "unit_providers": list(dict.fromkeys(
             provider["name"] for provider, answer, _confidence, _error in results
             if answer and canonical_answer(qtype, answer) == choice.winner
@@ -1908,6 +1912,7 @@ async def _resolve_ai(
                     "samples": len(_unit_ready(providers)[:3]),
                     "share": unit_share, "rounds": meta.get("unit_rounds") or 1,
                     "models": unit_models,
+                    "tie_break": meta.get("unit_tie_break") or "",
                     "errors": meta.get("unit_errors") or []}
             trace_store.set_vote(dict(vote, kind="unit"))
             # 与首次作答分支同一口径：必须至少两个独立模型一致且份额过半，
@@ -1953,6 +1958,7 @@ async def _resolve_ai(
                     "cross": meta.get("cross"),
                     "consensus": consensus,
                     "vote": vote,
+                    "tie_break": (vote or {}).get("tie_break") or "",
                     "confidence": confidence,
                     "low_confidence": low_conf,
                     "share": meta.get("unit_share"),
@@ -1971,9 +1977,21 @@ async def _resolve_ai(
         )
 
     key = cache.make_key(qtype, title, options, images, subject, context)
-    hit = None if (strict_official or unit_mode) else cache.get(key)
+    if strict_official or unit_mode:
+        hit, retried = None, False
+    else:
+        hit, retried = cache.lookup_for_answer(
+            key,
+            float(opts.get("cache_retry_probability") or 0),
+            float(opts.get("cache_retry_min_confidence") or 0),
+        )
+    if retried:
+        stats.bump("cache_retry")
     trace_store.stage(
-        "cache", "hit" if hit else ("skip" if (strict_official or unit_mode) else "miss"),
+        "cache",
+        "hit" if hit else (
+            "retry" if retried else ("skip" if (strict_official or unit_mode) else "miss")
+        ),
         answer=(hit or {}).get("answer"),
     )
     if hit:
@@ -2125,7 +2143,8 @@ async def _resolve_ai(
     else:
         if not strict_official:
             cache.set(key, title, answer, provider["name"], qtype,
-                      json.dumps(options, ensure_ascii=False), subject, image_hash)
+                      json.dumps(options, ensure_ascii=False), subject, image_hash,
+                      source="ai", confidence=confidence)
         _remember(qtype, title, options, answer, subject, image_hash, provider["name"])
     voted_ok = bool(vote and vote.get("votes", {}).get(answer, 0) >= 2)
     consensus = "cross" if cross_result in ("agree", "voted-agree") else ("vote" if voted_ok else None)
@@ -2151,6 +2170,7 @@ async def _resolve_ai(
                 "subject": subject,
                 "cross": cross_result,
                 "vote": vote,
+                "tie_break": (vote or {}).get("tie_break") or "",
                 "confidence": confidence,
                 "low_confidence": low_conf,
                 "scene": scene,

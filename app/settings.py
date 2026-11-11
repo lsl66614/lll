@@ -7,6 +7,7 @@ import os
 import threading
 from typing import Any
 
+from . import config
 from .quality import normalize_routes
 
 DEFAULTS: dict[str, Any] = {
@@ -33,16 +34,21 @@ DEFAULTS: dict[str, Any] = {
     "auto_vote_limit": 20,
     "auto_vote_write": False,
     "auto_resolve": False,
+    "batch_enabled": config.BATCH_ENABLED,
+    "cache_retry_probability": config.CACHE_RETRY_PROBABILITY,
+    "cache_retry_min_confidence": config.CACHE_RETRY_MIN_CONFIDENCE,
 }
 
 _BOOL_KEYS = ("cross_check", "image_two_stage", "inline_images", "title_fill",
               "multiple_conservative", "strict_official", "official_cross_check",
               "low_conf_vote", "semantic_match", "local_ocr", "confidence_weight",
               "auto_calibrate", "auto_calibrate_cross", "auto_vote",
-              "auto_vote_write", "auto_resolve", "web_learn")
+              "auto_vote_write", "auto_resolve", "web_learn", "batch_enabled")
 _INT_KEYS = {"auto_calibrate_limit": (1, 500), "auto_vote_limit": (1, 200),
              "web_daily_budget": (1, 5000), "web_max_results": (1, 10)}
-_FLOAT_KEYS = {"confidence_threshold": (0.0, 1.0)}
+_FLOAT_KEYS = {"confidence_threshold": (0.0, 1.0),
+               "cache_retry_probability": (0.0, 1.0),
+               "cache_retry_min_confidence": (0.0, 1.0)}
 
 
 class Settings:

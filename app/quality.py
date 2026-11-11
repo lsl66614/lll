@@ -151,6 +151,8 @@ class VoteResult:
     counts: dict[str, int]
     share: float
     total_weight: float
+    # 平票裁决依据：weight（加权分）/ count（票数）/ confidence / order（先出现者）
+    tie_break: str = ""
 
 
 def weighted_choice(
@@ -161,11 +163,13 @@ def weighted_choice(
     """加权多数票。
 
     ``samples`` 每项是 ``(answer, provider_name, confidence)``。
-    置信度缺失按 1.0 处理；票数相同时先比加权分，再比原始票数，
-    最后按首次出现顺序决定，保证结果可复现。
+    置信度缺失按 1.0 处理；先比加权分，再比原始票数、获胜答案的最高置信度，
+    最后按首次出现顺序决定，保证结果可复现；用了哪条规则记在 ``tie_break``。
     """
     scores: dict[str, float] = {}
     counts: dict[str, int] = {}
+    confidences: dict[str, float] = {}
+    order: dict[str, int] = {}
     total = 0.0
     for answer, provider_name, confidence in samples:
         if not answer:
@@ -173,12 +177,33 @@ def weighted_choice(
         score = sample_score(rows, provider_name, confidence, use_confidence)
         scores[answer] = scores.get(answer, 0.0) + score
         counts[answer] = counts.get(answer, 0) + 1
+        order.setdefault(answer, len(order))
+        confidences.setdefault(answer, -1.0)
+        try:
+            value = float(confidence) if confidence is not None else -1.0
+        except (TypeError, ValueError):
+            value = -1.0
+        if value > confidences[answer]:
+            confidences[answer] = value
         total += score
 
     if not scores:
         return VoteResult(None, {}, {}, 0.0, 0.0)
 
-    winner = max(scores, key=lambda answer: (scores[answer], counts[answer]))
+    tie_break = "weight"
+    top = max(scores.values())
+    candidates = [key for key, value in scores.items() if abs(value - top) <= 1e-9]
+    if len(candidates) > 1:
+        tie_break = "count"
+        best_count = max(counts[key] for key in candidates)
+        candidates = [key for key in candidates if counts[key] == best_count]
+        if len(candidates) > 1:
+            tie_break = "confidence"
+            best_conf = max(confidences[key] for key in candidates)
+            candidates = [key for key in candidates if confidences[key] == best_conf]
+            if len(candidates) > 1:
+                tie_break = "order"
+    winner = min(candidates, key=lambda key: order.get(key, 0))
     share = round(scores[winner] / total, 4) if total else 0.0
     return VoteResult(
         winner=winner,
@@ -186,6 +211,7 @@ def weighted_choice(
         counts=counts,
         share=share,
         total_weight=round(total, 4),
+        tie_break=tie_break,
     )
 
 
