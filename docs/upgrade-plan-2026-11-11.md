@@ -384,3 +384,40 @@ def get_for_answer(self, key: str) -> dict | None
 - `build_batch_messages()`：批量提示词 + 2 题 few-shot；
 - `_call_batch_one()`：部分失败回退 `_call_one`，per-provider 串行；
 - 分片：`BATCH_MAX_ITEMS` + `BATCH_MAX_CHARS` 双阈值。
+
+## 17. D4-D5 执行记录（2026-11-11，已完成）
+
+### 已落地
+
+| 项 | 文件 | 说明 |
+|---|---|---|
+| 批量提示词 | `app/parsing.py:144` | `build_batch_messages(items, context)`；system 含强约束 JSON schema + 2 题 few-shot（单选/多选） |
+| 题目排版 | 同上 | 每题 `【id】/题型/题干/选项(A. …)` 四段，题间空行；支持 `extra`（图片转写） |
+| 分片 | `app/batch_parse.py:349` | `plan_batches()`：题数 + 字符预算双阈值；单题超预算时独占一批 |
+| 批量调用 | `app/main.py:2529` | `_call_batch_one()`：复用 `call_provider` 与统一超时；返回 `(resolved, missing, elapsed, error)` |
+| 串行锁 | `app/main.py:2515` | `_batch_lock()` 按 provider 加锁，防止并发批请求把上游打到 429 |
+| 题型规范化 | `app/main.py:2571` | 每题过 `parse_answer_detail(..., strict=False)`；答案不在选项内（如单选回 `Z`）判失败 |
+| 统计/追踪 | `app/main.py:2583-2586` | 成功计 `stats.success`，失败计 `stats.failure` + 冷却；`trace_store.stage("batch", ...)` 记批级摘要 |
+
+### 设计约束
+
+- **只处理纯文本题**：带图片的题由调用方拆回单题链路，避免批量视觉输入串题。
+- `strict=False` 是必须的：批量返回的是 `"A"` 这样的裸答案，`strict=True` 只认
+  `{"answer": ...}`，会把所有批量答案判失败。
+- 整批异常 / 超时 → `missing` 为全部 id；部分解析失败 → 只回退对应 id。
+- 批量路径不做缓存/题库查询，这些由上层接口负责（D6-D7）。
+
+### 测试（实测）
+
+- 新增 `tests/test_batch_call.py` 14 例：提示词结构、context/extra、双阈值分片、
+  超预算单题独占、混合题型成功、部分缺失、纯文本不可解析、答案越界、ProviderError、
+  超时、空 items。
+- 实测提示词渲染：`【q1】题型：单选题 / A. 3 / B. 4`，context 正确前置。
+- 全量：`python -m unittest discover -s tests` → **550 tests OK**（536 + 14）。
+
+### 待办（D6-D7）
+
+- `POST /api/batch/query`：`answer` / `prefetch` 双模式、按 id 对齐、限流；
+- 复用 `_singleflight` 与 `cache.set` / `answer_memory.record` / `failures.resolve`，
+  把记账逻辑抽成 `_record_answer()` 供单题/批量共用；
+- 新增 `tests/test_batch_api.py`（≥ 8 例）。

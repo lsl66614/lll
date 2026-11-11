@@ -57,11 +57,13 @@ from .image_assets import ImageAssetStore
 from .option_images import annotate_options
 from .title_fill import find_full_title
 from .llm import ProviderError, call_provider, last_reasoning, last_usage, reset_usage
+from .batch_parse import parse_answer_array
 from .feedback_feed import FeedbackFeed
 from .mooc_result import _answers_match, apply_feedback, parse_result_html
 from .mooc_rpc import parse_paper
 from .official_truth import OfficialTruth
 from .parsing import (
+    build_batch_messages,
     build_messages,
     normalize_type,
     parse_answer,
@@ -2504,6 +2506,86 @@ async def _call_one(
         usage=usage, reasoning=reasoning,
     )
     return answer, confidence, elapsed, ""
+
+
+_batch_locks: dict[str, asyncio.Lock] = {}
+_batch_locks_loop: Any = None
+
+
+def _batch_lock(provider_id: str) -> asyncio.Lock:
+    """同一 provider 的批量请求串行，避免并发批请求把上游打到 429。"""
+    global _batch_locks, _batch_locks_loop
+    loop = asyncio.get_running_loop()
+    if _batch_locks_loop is not loop:
+        _batch_locks = {}
+        _batch_locks_loop = loop
+    lock = _batch_locks.get(provider_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _batch_locks[provider_id] = lock
+    return lock
+
+
+async def _call_batch_one(
+    provider: dict[str, Any],
+    items: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], list[str], int, str]:
+    """一个模型答一批题，返回 (按 id 的结果, 缺失 id, 耗时, 错误)。
+
+    部分题解析失败只把对应 id 放进 ``missing``，调用方回退单题补答；
+    整批失败时 ``missing`` 为全部 id，保证批量路径不比单题差。
+    """
+    ids = [str(item.get("id")) for item in items]
+    if not ids:
+        return {}, [], 0, ""
+    started = time.perf_counter()
+    provider_name = str(provider.get("name") or provider.get("id") or "")
+    budget = min(float(provider["timeout"]), float(config.REQUEST_TIMEOUT_SECONDS))
+    messages = build_batch_messages(items, context=str(items[0].get("context") or ""))
+    try:
+        async with _batch_lock(str(provider.get("id") or provider_name)):
+            reset_usage()
+            async with asyncio.timeout(budget):
+                text = await call_provider(provider, messages)
+    except asyncio.TimeoutError:
+        stats.failure(provider, f"批量超时（>{budget:.0f}s）")
+        _mark_failure(str(provider.get("id") or ""))
+        return {}, ids, 0, f"{provider_name}：批量超时"
+    except ProviderError as exc:
+        stats.failure(provider, exc.message)
+        _mark_failure(str(provider.get("id") or ""))
+        return {}, ids, 0, f"{provider_name}：{exc.message}"
+    except Exception as exc:  # noqa: BLE001 - 整批异常都退回单题
+        stats.failure(provider, f"内部错误: {exc}")
+        _mark_failure(str(provider.get("id") or ""))
+        return {}, ids, 0, f"{provider_name}：内部错误 {exc}"
+
+    elapsed = int((time.perf_counter() - started) * 1000)
+    parsed, _ignored = parse_answer_array(text, ids)
+    by_id = {str(item.get("id")): item for item in items}
+    resolved: dict[str, dict[str, Any]] = {}
+    for qid, payload in parsed.items():
+        item = by_id.get(qid)
+        if item is None:
+            continue
+        answer, _confidence = parse_answer_detail(
+            str(item.get("type") or "single"),
+            str(payload.get("answer") or ""),
+            parse_options(item.get("options")),
+            strict=False,
+        )
+        if answer:
+            resolved[qid] = {
+                "answer": answer,
+                "confidence": payload.get("confidence"),
+            }
+    missing = [qid for qid in ids if qid not in resolved]
+    stats.success(provider, elapsed)
+    trace_store.stage(
+        "batch", "partial" if missing else "done",
+        provider=provider_name, items=len(ids), missing=len(missing),
+    )
+    return resolved, missing, elapsed, ""
 
 
 async def _ask_providers(

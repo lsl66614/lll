@@ -141,6 +141,55 @@ def build_messages(qtype: str, title: str, options: list[str], images: list[str]
     ]
 
 
+def build_batch_messages(items: list[dict], context: str = "") -> list[dict]:
+    """构造多题批量作答的 messages。
+
+    ``items`` 每项含 ``id`` / ``type`` / ``title`` / ``options``（可选 ``extra``）。
+    只处理文本题；带图片的题由调用方拆回单题链路（批量视觉输入容易串题）。
+    """
+    system = (
+        "你是严谨的考试答题助手。下面会给出若干道题，请逐题作答。\n"
+        "只输出一个 JSON 对象，不要任何解释、注释或 markdown 围栏：\n"
+        '{"answers":[{"id":"题目ID","answer":"答案","confidence":0.9}]}\n'
+        "关键约束：\n"
+        "1. 必须回答全部题目，不得遗漏；\n"
+        "2. id 必须原样返回，不得改写、不得自增；\n"
+        "3. 单选题只回字母；多选题按字母顺序用 # 连接；判断题回 正确/错误；\n"
+        "4. 填空题多个空按顺序用 # 连接；\n"
+        "5. 无法确定时 answer 为空字符串，不要编造。\n"
+        "示例输入：\n"
+        "【e1】\n题型：单选题\n题干：2+2=?\n选项：\nA. 3\nB. 4\n\n"
+        "【e2】\n题型：多选题\n题干：以下哪些是质数？\n选项：\nA. 2\nB. 4\nC. 5\n"
+        "示例输出：\n"
+        '{"answers":[{"id":"e1","answer":"B"},{"id":"e2","answer":"A#C"}]}'
+    )
+    blocks: list[str] = []
+    for index, item in enumerate(items, 1):
+        qid = str(item.get("id") or index)
+        qtype = str(item.get("type") or "single")
+        title = str(item.get("title") or "")
+        options = parse_options(item.get("options"))
+        lines = [
+            f"【{qid}】",
+            f"题型：{TYPE_LABELS.get(qtype, qtype)}",
+            f"题干：{title}",
+        ]
+        if options:
+            lines.append("选项：")
+            lines.extend(f"{LETTERS[i]}. {option}" for i, option in enumerate(options))
+        extra = str(item.get("extra") or "").strip()
+        if extra:
+            lines.append(f"图片转写：{extra}")
+        blocks.append("\n".join(lines))
+    body = "\n\n".join(blocks)
+    if context.strip():
+        body = f"课程/作业上下文：{context.strip()}\n\n{body}"
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": body},
+    ]
+
+
 # --------------------------------------------------------------------------
 # 答案解析
 # --------------------------------------------------------------------------

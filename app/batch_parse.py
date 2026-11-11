@@ -19,6 +19,8 @@ import math
 import re
 from typing import Any, Iterable
 
+from . import config
+
 _ID_KEYS = ("id", "qid", "question_id", "number", "index", "题号", "题目id")
 _ANSWER_KEYS = ("answer", "ans", "value", "choice", "result", "答案")
 _CONFIDENCE_KEYS = ("confidence", "conf", "probability", "score", "置信度")
@@ -332,6 +334,40 @@ def _regex_entries(text: str) -> dict[str, dict]:
             "confidence": _confidence(conf_match.group(1)) if conf_match else None,
         }
     return out
+
+
+def _item_size(item: dict) -> int:
+    """粗估一题在 prompt 里占多少字符，用于按预算分片。"""
+    return (
+        len(str(item.get("title") or ""))
+        + len(str(item.get("options") or ""))
+        + len(str(item.get("extra") or ""))
+        + 32
+    )
+
+
+def plan_batches(
+    items: Iterable[dict],
+    max_items: int | None = None,
+    max_chars: int | None = None,
+) -> list[list[dict]]:
+    """按「题数 + 字符预算」双阈值分片；单题超预算时仍独占一批。"""
+    limit_items = max(1, int(max_items if max_items is not None else config.BATCH_MAX_ITEMS))
+    limit_chars = max(1, int(max_chars if max_chars is not None else config.BATCH_MAX_CHARS))
+    batches: list[list[dict]] = []
+    current: list[dict] = []
+    used = 0
+    for item in items:
+        size = _item_size(item)
+        if current and (len(current) >= limit_items or used + size > limit_chars):
+            batches.append(current)
+            current = []
+            used = 0
+        current.append(item)
+        used += size
+    if current:
+        batches.append(current)
+    return batches
 
 
 def parse_answer_array(
