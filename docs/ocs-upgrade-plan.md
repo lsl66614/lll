@@ -1677,3 +1677,29 @@ AI 简报实测可用（provider 1，约 440 字），保存在最近一次运�
 - 模型表 4 行正确标出 `A 一致 / B 异议 / A 一致 / — 失败`，点击行打开抽屉（`drawer on`）。
 - 1440 / 1280 / 1100 / 960 / 860 五档 `overflow: []`，控制台 `errors: []`，`node --check` 通过。
 - `python -m unittest discover -s tests`：**566 tests OK**（覆盖 main.py 透传改动）。
+
+### 模型思考过程（2026-11-11 22:30）
+
+**现状（实测）**
+
+- 提取链路：`app/llm.py:216 _extract_reasoning()` 兼容 chat/completions 的
+  `message.reasoning_content` / `message.reasoning` / `message.thinking`，
+  以及 responses 的 `output[] type=reasoning` 的 `summary` / `content`；上限 `MAX_REASONING=4000`。
+- 写入链路：`_call_one()` 用 `asyncio.timeout`（不能用 `wait_for`，它会另起 task，
+  contextvar 读不到）→ `last_reasoning()` → `trace_store.model_end(reasoning=...)` →
+  `Trace.model_end` 再裁到 4000 字 → `/trace` 的「模型思考」折叠区。
+- 本机三个 provider 实打：deepseek-v4-1-flash / glm-5.3-flash / qwen3.8-flash-max
+  均返回 `reasoning_content`（实测长度 107 / 46 / 57 字），`1+1` 题走 `_call_one`
+  后 trace 里 `reasoning_len=134`、`usage=165/51/216`、`answer=B`。
+
+**本次修复**
+
+- 以前只有成功路径把 `reasoning` 传给 `model_end`，答案解析失败（模型给了思考但答案格式不对）
+  时思考会丢。现在超时 / `ProviderError` / 内部异常三个分支都带 `reasoning=last_reasoning()`
+  和 `usage=last_usage()`：实测构造一道填空错题，模型拒答，trace 仍保留 144 字思考。
+- 推理框最大高度从 `320px` 提到 `min(56vh, 560px)`，长思考少滚一点。
+
+**限制（页面会明确提示）**
+
+- 上游不返回思考字段时显示「该接口本次未返回思考内容（部分模型只给答案）」。
+- 批量 `/api/batch/query` 不记录逐模型思考，答案见批次表。

@@ -2545,7 +2545,7 @@ async def _call_one(
         _mark_failure(str(provider.get("id") or ""))
         trace_store.model_end(
             trace_entry, elapsed_ms=int((time.perf_counter() - started) * 1000),
-            error=f"超时（>{budget:.0f}s）",
+            error=f"超时（>{budget:.0f}s）", reasoning=last_reasoning(), usage=last_usage(),
         )
         return None, None, 0, f"{provider['name']}：超时"
     except ProviderError as exc:
@@ -2553,7 +2553,7 @@ async def _call_one(
         _mark_failure(str(provider.get("id") or ""))
         trace_store.model_end(
             trace_entry, elapsed_ms=int((time.perf_counter() - started) * 1000),
-            error=exc.message,
+            error=exc.message, reasoning=last_reasoning(), usage=last_usage(),
         )
         return None, None, 0, f"{provider['name']}：{exc.message}"
     except Exception as exc:  # noqa: BLE001 - 任何意外都只跳过这一个 AI
@@ -2561,7 +2561,7 @@ async def _call_one(
         _mark_failure(str(provider.get("id") or ""))
         trace_store.model_end(
             trace_entry, elapsed_ms=int((time.perf_counter() - started) * 1000),
-            error=f"内部错误 {exc}",
+            error=f"内部错误 {exc}", reasoning=last_reasoning(), usage=last_usage(),
         )
         return None, None, 0, f"{provider['name']}：内部错误 {exc}"
     stats.success(provider, elapsed)
