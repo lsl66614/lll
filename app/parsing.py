@@ -166,7 +166,8 @@ def build_batch_messages(items: list[dict], context: str = "") -> list[dict]:
     blocks: list[str] = []
     for index, item in enumerate(items, 1):
         qid = str(item.get("id") or index)
-        qtype = str(item.get("type") or "single")
+        raw_type = str(item.get("type") or "single")
+        qtype = normalize_type(raw_type) or raw_type
         title = str(item.get("title") or "")
         options = parse_options(item.get("options"))
         lines = [

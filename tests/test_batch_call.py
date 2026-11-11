@@ -52,6 +52,18 @@ class BatchPromptTests(unittest.TestCase):
         body = build_batch_messages([item])[1]["content"]
         self.assertIn("图片转写：求导", body)
 
+    def test_alias_types_are_normalized_in_prompt(self):
+        items = [
+            _item("q1", "multi", ["甲", "乙"]),
+            _item("q2", "单选题", ["甲", "乙"]),
+            _item("q3", "fill"),
+        ]
+        body = build_batch_messages(items)[1]["content"]
+        self.assertIn("题型：多选题", body)
+        self.assertIn("题型：单选题", body)
+        self.assertIn("题型：填空题", body)
+        self.assertNotIn("题型：multi", body)
+
 
 class PlanBatchesTests(unittest.TestCase):
     def test_item_limit(self):
@@ -130,6 +142,27 @@ class CallBatchOneTests(unittest.TestCase):
         self.assertEqual(resolved, {})
         self.assertEqual(missing, ["q1", "q2"])
         self.assertEqual(error, "")
+
+    def test_alias_type_answer_is_not_dropped(self):
+        items = [_item("q1", "multi", ["甲", "乙", "丙"])]
+
+        async def fake(provider, messages):
+            return '{"answers":[{"id":"q1","answer":"A#C"}]}'
+
+        (resolved, missing, _elapsed, error), _stats = self._run(items, fake)
+        self.assertEqual(error, "")
+        self.assertEqual(missing, [])
+        self.assertEqual(resolved["q1"]["answer"], "A#C")
+
+    def test_unknown_type_is_not_guessed(self):
+        items = [_item("q1", "essay")]
+
+        async def fake(provider, messages):
+            return '{"answers":[{"id":"q1","answer":"A"}]}'
+
+        (resolved, missing, _elapsed, _error), _stats = self._run(items, fake)
+        self.assertEqual(resolved, {})
+        self.assertEqual(missing, ["q1"])
 
     def test_answer_outside_options_is_dropped(self):
         items = [_item("q1", "single", ["甲", "乙"])]

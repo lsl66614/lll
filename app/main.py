@@ -2568,8 +2568,10 @@ async def _call_batch_one(
         item = by_id.get(qid)
         if item is None:
             continue
+        raw_type = str(item.get("type") or "single")
+        qtype = normalize_type(raw_type) or raw_type
         answer, _confidence = parse_answer_detail(
-            str(item.get("type") or "single"),
+            qtype,
             str(payload.get("answer") or ""),
             parse_options(item.get("options")),
             strict=False,
