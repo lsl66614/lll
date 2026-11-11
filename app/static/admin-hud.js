@@ -89,9 +89,110 @@
     if (meta) meta.setAttribute('content', theme === 'light' ? '#f5f5f7' : '#282828');
   }
 
+  /* ------------------------------------------------------------ 导航工作区 */
+  var NAV_OPEN_KEY = 'gw_nav_open';
+  var NAV_ALERTS = {
+    bank: ['navConflictCount', 'navInspectCount'],
+    ops: ['navFailCount', 'navUnitCount'],
+    learn: ['navDeadlineCount', 'navAutoCount'],
+    connect: [],
+    data: []
+  };
+
+  function navGroups() {
+    return Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
+  }
+
+  function groupKeyForSection(section) {
+    if (!section) return '';
+    var item = document.querySelector('.nav-item[data-section="' + section + '"]');
+    var group = item && item.closest ? item.closest('.nav-group') : null;
+    return group ? group.getAttribute('data-nav-group') : '';
+  }
+
+  function setGroupOpen(group, open) {
+    var head = group.querySelector('.nav-group-head');
+    var body = group.querySelector('.nav-group-body');
+    if (!head || !body) return;
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) body.removeAttribute('hidden');
+    else body.setAttribute('hidden', '');
+  }
+
+  function storeOpenGroup(key) {
+    try {
+      if (key) localStorage.setItem(NAV_OPEN_KEY, key);
+      else localStorage.removeItem(NAV_OPEN_KEY);
+    } catch (e) { /* ignore */ }
+  }
+
+  function openNavGroup(section) {
+    var key = groupKeyForSection(section);
+    if (!key) return;
+    navGroups().forEach(function (group) {
+      setGroupOpen(group, group.getAttribute('data-nav-group') === key);
+    });
+    storeOpenGroup(key);
+  }
+
+  function toggleNavGroup(group) {
+    var key = group.getAttribute('data-nav-group');
+    var head = group.querySelector('.nav-group-head');
+    var isOpen = head && head.getAttribute('aria-expanded') === 'true';
+    if (isOpen) {
+      setGroupOpen(group, false);
+      storeOpenGroup('');
+      return;
+    }
+    navGroups().forEach(function (other) {
+      setGroupOpen(other, other === group);
+    });
+    storeOpenGroup(key);
+  }
+
+  function syncNavDots() {
+    Object.keys(NAV_ALERTS).forEach(function (key) {
+      var dot = document.querySelector('[data-nav-dot="' + key + '"]');
+      if (!dot) return;
+      var ids = NAV_ALERTS[key] || [];
+      var active = ids.some(function (id) { return num(id) > 0; });
+      dot.hidden = !active;
+    });
+  }
+
+  function initNavGroups() {
+    var groups = navGroups();
+    if (!groups.length) return;
+    groups.forEach(function (group) {
+      var head = group.querySelector('.nav-group-head');
+      if (head) head.addEventListener('click', function () { toggleNavGroup(group); });
+    });
+    var stored = '';
+    try { stored = localStorage.getItem(NAV_OPEN_KEY) || ''; } catch (e) { /* ignore */ }
+    if (stored) {
+      var target = document.querySelector('.nav-group[data-nav-group="' + stored + '"]');
+      if (target) setGroupOpen(target, true);
+    }
+    var active = document.querySelector('.nav-item.active[data-section]');
+    if (active) openNavGroup(active.getAttribute('data-section'));
+    syncNavDots();
+    if (window.MutationObserver) {
+      var observer = new MutationObserver(syncNavDots);
+      Object.keys(NAV_ALERTS).forEach(function (key) {
+        (NAV_ALERTS[key] || []).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) observer.observe(el, { childList: true, characterData: true, subtree: true });
+        });
+      });
+    }
+  }
+
+  initNavGroups();
+
   window.OCSHud = {
     palette: palette,
     syncOverview: syncOverview,
-    onThemeChange: onThemeChange
+    onThemeChange: onThemeChange,
+    openNavGroup: openNavGroup
   };
 })();
