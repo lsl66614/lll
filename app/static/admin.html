@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="theme-color" content="#07080B" />
+<meta name="theme-color" content="#282828" />
 <title>OCS AI 网关 · 管理台</title>
 <link rel="stylesheet" href="/tokens.css" />
 <script>
@@ -14,7 +14,7 @@
       var theme = saved === 'light' ? 'light' : 'dark';
       document.documentElement.dataset.theme = theme;
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', theme === 'light' ? '#F2F1EA' : '#07080B');
+      if (meta) meta.setAttribute('content', theme === 'light' ? '#f5f5f7' : '#282828');
     } catch (e) { document.documentElement.dataset.theme = 'dark'; }
   })();
 </script>
@@ -787,6 +787,8 @@
     .panel-head .hint { white-space: normal; }
   }
 </style>
+<!-- HUD 设计系统（试点层）：必须在旧内联样式之后，才能覆盖 ui-v2 / ui-v3 -->
+<link rel="stylesheet" href="/static/admin-hud.css?v=20261111" />
 </head>
 <body>
 <a class="skip-link" href="#main">跳到主内容</a>
@@ -853,97 +855,140 @@
     </header>
 
     <section class="section" data-section="overview">
-      <div class="hero">
-        <div class="hero-copy">
-          <span class="hero-eyebrow">Local-first answer engine</span>
-          <h2>题库先答，模型兜底。</h2>
-          <p>同一道题只花一次 token。官方答案、人工录入、导入题库与 AI 共识分层仲裁；拿不准时保留官方答案并打上风险标记，而不是悄悄猜一个。</p>
-          <div class="hero-metrics">
-            <div class="hero-metric" data-goto-section="bank" title="题库规模 → 题库列表" style="cursor:pointer"><span>题库规模</span><b id="heroBank">0<em>题</em></b></div>
-            <div class="hero-metric"><span>回流正确率</span><b id="heroQuality">—</b></div>
-            <div class="hero-metric"><span>官方复核</span><b id="heroOfficial">0<em>次</em></b></div>
+      <div class="hud-overview">
+
+        <div class="hud-overview-bar">
+          <div class="hud-overview-note">题库先答，模型兜底 · 题库命中 <b id="sBankHits" class="hud-inline-num">0</b> 次</div>
+          <div class="hud-overview-actions">
+            <span class="hud-pill" id="hudStatus"><i aria-hidden="true"></i><span>正在连接…</span></span>
+            <a class="hud-textlink" href="/trace" target="_blank" rel="noopener">答题链路 <span aria-hidden="true">↗</span></a>
           </div>
         </div>
-        <div class="hero-visual" aria-hidden="true">
-          <div class="radar">
-            <div class="radar-sweep"></div>
-            <i class="radar-blip b1"></i>
-            <i class="radar-blip b2"></i>
-            <i class="radar-blip b3"></i>
-            <div class="radar-core"></div>
+
+        <div class="hud-kpis" role="group" aria-label="核心指标">
+          <button class="hud-kpi" type="button" data-goto-section="bank" title="查看本地题库">
+            <span class="hud-kpi-label">累计答题</span>
+            <b id="sTotal">0</b>
+            <span class="hud-kpi-sub">故障切换 <em id="sFailover">0</em> 次</span>
+          </button>
+          <button class="hud-kpi" type="button" data-goto-section="bank" title="查看本地题库">
+            <span class="hud-kpi-label">题库规模</span>
+            <b id="heroBank">0<em>题</em></b>
+            <span class="hud-kpi-sub">本地题库 <em id="sBank">0</em> 题</span>
+          </button>
+          <button class="hud-kpi" type="button" data-goto-section="ops" title="打开缓存">
+            <span class="hud-kpi-label">缓存命中</span>
+            <b id="sCached">0</b>
+            <span class="hud-kpi-sub">缓存题目 <em id="sCache">0</em> 题</span>
+          </button>
+          <button class="hud-kpi" type="button" data-goto-section="inspector" title="打开质量中心">
+            <span class="hud-kpi-label">回流正确率</span>
+            <b id="heroQuality">—</b>
+            <span class="hud-kpi-sub">官方复核 <em id="heroOfficial">0</em> 次</span>
+          </button>
+        </div>
+
+        <div class="hud-grid">
+          <div class="hud-card hud-queue">
+            <div class="hud-card-head">
+              <div>
+                <h3>AI 队列</h3>
+                <span class="hint">按顺序调用 · 失败自动切换</span>
+              </div>
+              <span class="badge" id="hudQueueCount">0 个模型</span>
+            </div>
+            <div id="list"></div>
           </div>
-          <span class="radar-label">LIVE · LOCAL-FIRST</span>
-        </div>
-      </div>
-      <div class="panel" style="margin-bottom:14px;">
-        <div class="panel-head"><h2>功能完成度</h2><span class="hint">面板标题旁的徽章表示该功能的收尾程度</span></div>
-        <div class="tips" style="display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
-          <span><span class="tier auto" style="margin-left:0">闭环</span> 开关或保存后自动生效，无需人工收尾</span>
-          <span><span class="tier semi" style="margin-left:0">半自动</span> 生成候选或建议，需人工确认才写库</span>
-          <span><span class="tier ext" style="margin-left:0">依赖外部</span> 需要模型 / 用户脚本 / 第三方服务，缺失时降级或为空</span>
-        </div>
-      </div>
-      <div class="stats">
-        <div class="stat"><span>累计答题</span><b id="sTotal">0</b></div>
-        <div class="stat" data-goto-section="ops" title="缓存命中 → 缓存" style="cursor:pointer"><span>缓存命中</span><b id="sCached">0</b></div>
-        <div class="stat"><span>题库命中</span><b id="sBankHits">0</b></div>
-        <div class="stat"><span>故障切换</span><b id="sFailover">0</b></div>
-        <div class="stat" data-goto-section="ops" title="缓存题目数 → 缓存" style="cursor:pointer"><span>缓存题目数</span><b id="sCache">0</b></div>
-        <div class="stat" data-goto-section="bank" title="本地题库 → 题库列表" style="cursor:pointer"><span>本地题库</span><b id="sBank">0</b></div>
-        <div class="stat" data-goto-section="bank" data-goto-status="pending" title="待确认 → 题库（仅看待确认）" style="cursor:pointer"><span>待确认</span><b id="sPending">0</b></div>
-        <div class="stat" data-goto-section="conflicts" title="冲突 → 冲突裁决" style="cursor:pointer"><span>冲突</span><b id="sConflict">0</b></div>
-        <div class="stat" data-goto-section="inspector" title="巡检告警（P0+P1）→ 质量中心" style="cursor:pointer"><span>巡检告警</span><b id="sInspect">—</b></div>
-      </div>
 
-      <div class="charts">
-        <div class="panel">
-          <div class="panel-head"><h2>题库构成</h2><span class="hint">按状态</span></div>
-          <div class="chart-body" id="chartBankStatus"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h2>题型分布</h2><span class="hint">按题型</span></div>
-          <div class="chart-body" id="chartBankType"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h2>专业分布</h2><span class="hint">Top 10</span></div>
-          <div class="chart-body" id="chartSubjects"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h2>答案来源</h2><span class="hint">官方 / 校准 / AI</span></div>
-          <div class="chart-body" id="chartSources"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h2>模型调用</h2><span class="hint">次数 · 平均耗时 · 失败</span></div>
-          <div class="chart-body" id="chartProviders"></div>
-        </div>
-        <div class="panel" id="chartFailPanel" style="display:none">
-          <div class="panel-head"><h2>未答错误码</h2><span class="hint">按 /query 错误码</span></div>
-          <div class="chart-body" id="chartFailures"></div>
-        </div>
-      </div>
+          <div class="hud-stack">
+            <div class="hud-card hud-health">
+              <div class="hud-card-head">
+                <h3>需要关注</h3>
+                <span class="hint" id="hudHealthHint">一切正常</span>
+              </div>
+              <div class="hud-health-list">
+                <button class="hud-health-row" type="button" data-count-id="sPending" data-level="warn" data-goto-section="bank" data-goto-status="pending" title="查看待确认题目">
+                  <span class="hud-health-dot" aria-hidden="true"></span>
+                  <span class="hud-health-copy"><strong>待确认题目</strong><span>AI 自动入库，等待人工确认</span></span>
+                  <span class="hud-health-value" id="sPending">0</span>
+                </button>
+                <button class="hud-health-row" type="button" data-count-id="sConflict" data-level="danger" data-goto-section="conflicts" title="打开冲突裁决">
+                  <span class="hud-health-dot" aria-hidden="true"></span>
+                  <span class="hud-health-copy"><strong>答案冲突</strong><span>同一道题出现不一致的答案</span></span>
+                  <span class="hud-health-value" id="sConflict">0</span>
+                </button>
+                <button class="hud-health-row" type="button" data-count-id="sInspect" data-level="danger" data-goto-section="inspector" title="打开质量中心">
+                  <span class="hud-health-dot" aria-hidden="true"></span>
+                  <span class="hud-health-copy"><strong>巡检告警</strong><span>P0 / P1 质量检查结论</span></span>
+                  <span class="hud-health-value" id="sInspect">—</span>
+                </button>
+                <button class="hud-health-row" type="button" data-count-id="sFail" data-level="warn" data-goto-section="failures" title="查看未答题目">
+                  <span class="hud-health-dot" aria-hidden="true"></span>
+                  <span class="hud-health-copy"><strong>未答题目</strong><span>最近失败、可重试或补录</span></span>
+                  <span class="hud-health-value" id="sFail">0</span>
+                </button>
+              </div>
+            </div>
 
-      <div class="panel" style="margin-top:16px">
-        <div class="panel-head">
-          <h2>模型正确率</h2>
-          <span class="hint">官方答案回流校验 · 仅统计已回流到官方的题</span>
+            <div class="hud-card hud-http">
+              <div class="hud-card-head">
+                <h3>接口耗时</h3>
+                <span class="hint">最近 800 次</span>
+              </div>
+              <div class="hud-card-body">
+                <div id="httpStats"><span class="hint" style="display:block;padding:10px 14px">暂无请求记录</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="tips"><div id="qualityList"><span class="hint">暂无回流样本：测验结果页回传官方答案后自动统计</span></div></div>
-      </div>
 
-      <div class="panel" style="margin-top:16px">
-        <div class="panel-head">
-          <h2>接口耗时</h2>
-          <span class="hint">最近 800 次 · p50 / p95 / 错误</span>
+        <div class="hud-card hud-quality">
+          <div class="hud-card-head">
+            <h3>模型正确率</h3>
+            <span class="hint">官方答案回流校验 · 仅统计已回流到官方的题</span>
+          </div>
+          <div class="hud-card-body">
+            <div id="qualityList"><span class="hint" style="display:block;padding:10px 14px">暂无回流样本：测验结果页回传官方答案后自动统计</span></div>
+          </div>
         </div>
-        <div class="tips"><div id="httpStats"><span class="hint">暂无请求记录</span></div></div>
-      </div>
 
-      <div class="panel">
-        <div class="panel-head">
-          <h2>AI 队列<span class="tier auto" title="增删改、停用、排序、测试即时生效">闭环</span></h2>
-          <span class="hint">按顺序调用，失败自动换下一个</span>
+        <div class="hud-section-head">
+          <h3>题库与调用</h3>
+          <span>构成 · 来源 · 模型表现</span>
         </div>
-        <div id="list"></div>
+        <div class="hud-charts">
+          <div class="hud-card hud-chart">
+            <div class="hud-card-head"><h3>题库构成</h3><span class="hint">按状态</span></div>
+            <div class="chart-body" id="chartBankStatus"></div>
+          </div>
+          <div class="hud-card hud-chart">
+            <div class="hud-card-head"><h3>题型分布</h3><span class="hint">按题型</span></div>
+            <div class="chart-body" id="chartBankType"></div>
+          </div>
+          <div class="hud-card hud-chart">
+            <div class="hud-card-head"><h3>答案来源</h3><span class="hint">官方 / 校准 / AI</span></div>
+            <div class="chart-body" id="chartSources"></div>
+          </div>
+          <div class="hud-card hud-chart">
+            <div class="hud-card-head"><h3>模型调用</h3><span class="hint">次数 · 平均耗时</span></div>
+            <div class="chart-body" id="chartProviders"></div>
+          </div>
+        </div>
+
+        <details class="hud-more">
+          <summary>更多统计 · 专业分布与未答错误码</summary>
+          <div class="hud-charts">
+            <div class="hud-card hud-chart">
+              <div class="hud-card-head"><h3>专业分布</h3><span class="hint">Top 10</span></div>
+              <div class="chart-body" id="chartSubjects"></div>
+            </div>
+            <div class="hud-card hud-chart" id="chartFailPanel" style="display:none">
+              <div class="hud-card-head"><h3>未答错误码</h3><span class="hint">按 /query 错误码</span></div>
+              <div class="chart-body" id="chartFailures"></div>
+            </div>
+          </div>
+        </details>
+
       </div>
     </section>
 
@@ -1657,6 +1702,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="/static/admin-hud.js"></script>
 <script>
 const state = { providers: [], bank: [], bankTotal: 0, bankSubjects: [], bankPage: 0, bankLimit: 20,
   bankSubject: '全部', bankStatus: '', bankKeyword: '', selected: new Set(),
@@ -1743,6 +1789,11 @@ document.addEventListener('change', (e) => {
 
 function render() {
   const list = $('list');
+  const queueCount = $('hudQueueCount');
+  if (queueCount) {
+    const enabled = state.providers.filter((p) => p.enabled).length;
+    queueCount.textContent = `${enabled}/${state.providers.length} 个模型`;
+  }
   if (!state.providers.length) {
     list.innerHTML = '<div class="empty"><b>还没有添加任何 AI</b>点右上角「+ 添加 AI」，填入 Base URL、模型名和 Key 即可。</div>';
     renderRoutes();
@@ -2688,6 +2739,8 @@ async function loadFailures() {
     const events = Number(d.events || 0);
     $('failCount').textContent = `共 ${d.count} 道题` + (events > d.count ? ` · 累计失败 ${events} 次` : '');
     if ($('navFailCount')) $('navFailCount').textContent = d.count;
+    if ($('sFail')) $('sFail').textContent = d.count;
+    if (window.OCSHud) window.OCSHud.syncOverview();
     const retryBtn = $('btnFailRetry');
     if (retryBtn) {
       retryBtn.disabled = state.failRetrying || !retryable;
@@ -2756,12 +2809,21 @@ async function loadFailures() {
   } catch (e) { /* ignore */ }
 }
 
-const CHART_COLORS = {
-  adopted: 'var(--ok)',
-  pending: 'var(--warn)',
-  conflict: 'var(--danger)',
-  wrong: '#B58BFF'
-};
+function hudPalette() {
+  if (window.OCSHud && typeof window.OCSHud.palette === 'function') return window.OCSHud.palette();
+  return {
+    bg: '#282828', card: 'rgba(255,255,255,.05)', popover: '#303030',
+    fg: '#f5f5f7', fg2: '#98989d', fg3: '#6e6e73',
+    border: 'rgba(255,255,255,.07)', borderStrong: 'rgba(255,255,255,.12)',
+    primary: '#0a84ff', primarySoft: 'rgba(10,132,255,.14)',
+    ok: '#3ddc84', warn: '#ffd23f', danger: '#ff453a', purple: '#c084fc'
+  };
+}
+
+function chartColors() {
+  const p = hudPalette();
+  return { adopted: p.ok, pending: p.warn, conflict: p.danger, wrong: p.purple };
+}
 
 function donutChart(rows) {
   const r = 46;
@@ -2796,7 +2858,7 @@ const charts = {};
 function renderEChart(id, option) {
   const el = $(id);
   if (!el || !window.echarts) return false;
-  el.style.height = '240px';
+  el.style.height = '220px';
   if (!charts[id]) {
     el.innerHTML = '';
     charts[id] = window.echarts.init(el, null, { renderer: 'canvas' });
@@ -2807,28 +2869,30 @@ function renderEChart(id, option) {
 }
 
 function tooltipStyle() {
+  const p = hudPalette();
   return {
-    backgroundColor: '#12161D',
-    borderColor: '#2A3240',
+    backgroundColor: p.popover,
+    borderColor: p.borderStrong,
     borderWidth: 1,
-    textStyle: { color: '#E7EAF0', fontSize: 11 },
-    extraCssText: 'box-shadow: 0 12px 30px -12px rgba(0,0,0,.7);'
+    textStyle: { color: p.fg, fontSize: 11 },
+    extraCssText: 'box-shadow: 0 8px 28px rgba(0,0,0,.25);'
   };
 }
 
 function donutOption(rows) {
   const total = rows.reduce((s, x) => s + x.value, 0);
+  const p = hudPalette();
   return {
     backgroundColor: 'transparent',
     tooltip: Object.assign({ trigger: 'item', formatter: '{b}: {c} ({d}%)' }, tooltipStyle()),
-    legend: { bottom: 0, left: 'center', icon: 'roundRect', itemWidth: 8, itemHeight: 8, itemGap: 14, textStyle: { color: '#8A93A6', fontSize: 11 } },
+    legend: { bottom: 0, left: 'center', icon: 'roundRect', itemWidth: 8, itemHeight: 8, itemGap: 14, textStyle: { color: p.fg2, fontSize: 11 } },
     graphic: [
-      { type: 'text', left: 'center', top: '35%', style: { text: String(total), fill: '#E7EAF0', font: '600 24px "Cascadia Mono", monospace' } },
-      { type: 'text', left: 'center', top: '50%', style: { text: '题', fill: '#5C6577', font: '10px "Cascadia Mono", monospace' } }
+      { type: 'text', left: 'center', top: '35%', style: { text: String(total), fill: p.fg, font: '600 24px "Cascadia Mono", monospace' } },
+      { type: 'text', left: 'center', top: '50%', style: { text: '题', fill: p.fg3, font: '10px "Cascadia Mono", monospace' } }
     ],
     series: [{
       type: 'pie', radius: ['58%', '82%'], center: ['50%', '44%'], avoidLabelOverlap: false,
-      itemStyle: { borderColor: '#11151C', borderWidth: 2, borderRadius: 3 },
+      itemStyle: { borderColor: p.bg, borderWidth: 2, borderRadius: 3 },
       label: { show: false }, labelLine: { show: false },
       emphasis: { scale: true, scaleSize: 3 },
       data: rows.map((x) => ({ name: x.label, value: x.value, itemStyle: { color: x.color } }))
@@ -2838,21 +2902,23 @@ function donutOption(rows) {
 
 function barOption(rows, color) {
   const max = Math.max(1, ...rows.map((x) => x.value));
+  const p = hudPalette();
   return {
     backgroundColor: 'transparent',
     grid: { left: 6, right: 40, top: 8, bottom: 6, containLabel: true },
     tooltip: Object.assign({ trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}: {c}' }, tooltipStyle()),
-    xAxis: { type: 'value', max: max, splitLine: { lineStyle: { color: '#1F252F' } }, axisLabel: { color: '#5C6577', fontSize: 10 }, axisLine: { show: false }, axisTick: { show: false } },
-    yAxis: { type: 'category', inverse: true, data: rows.map((x) => x.label), axisLabel: { color: '#8A93A6', fontSize: 11, width: 96, overflow: 'truncate' }, axisLine: { show: false }, axisTick: { show: false } },
+    xAxis: { type: 'value', max: max, splitLine: { lineStyle: { color: p.border } }, axisLabel: { color: p.fg3, fontSize: 10 }, axisLine: { show: false }, axisTick: { show: false } },
+    yAxis: { type: 'category', inverse: true, data: rows.map((x) => x.label), axisLabel: { color: p.fg2, fontSize: 11, width: 96, overflow: 'truncate' }, axisLine: { show: false }, axisTick: { show: false } },
     series: [{
       type: 'bar', data: rows.map((x) => x.value), barWidth: 9,
-      itemStyle: { color: color || '#C6F24E', borderRadius: [0, 3, 3, 0] },
-      label: { show: true, position: 'right', color: '#8A93A6', fontSize: 10 }
+      itemStyle: { color: color || p.primary, borderRadius: [0, 3, 3, 0] },
+      label: { show: true, position: 'right', color: p.fg2, fontSize: 10 }
     }]
   };
 }
 
 function providerOption(rows) {
+  const p = hudPalette();
   return {
     backgroundColor: 'transparent',
     grid: { left: 6, right: 8, top: 30, bottom: 6, containLabel: true },
@@ -2864,15 +2930,15 @@ function providerOption(rows) {
         return `${esc(row.label)}<br/>调用 ${row.calls} 次 · 失败 ${row.fails} · 平均 ${row.avg_ms}ms`;
       }
     }, tooltipStyle()),
-    legend: { top: 0, right: 0, itemWidth: 8, itemHeight: 8, textStyle: { color: '#8A93A6', fontSize: 11 } },
-    xAxis: { type: 'category', data: rows.map((x) => x.label), axisLabel: { color: '#8A93A6', fontSize: 11 }, axisLine: { lineStyle: { color: '#1F252F' } }, axisTick: { show: false } },
+    legend: { top: 0, right: 0, itemWidth: 8, itemHeight: 8, textStyle: { color: p.fg2, fontSize: 11 } },
+    xAxis: { type: 'category', data: rows.map((x) => x.label), axisLabel: { color: p.fg2, fontSize: 11 }, axisLine: { lineStyle: { color: p.border } }, axisTick: { show: false } },
     yAxis: [
-      { type: 'value', name: '次数', nameTextStyle: { color: '#5C6577', fontSize: 10 }, splitLine: { lineStyle: { color: '#1F252F' } }, axisLabel: { color: '#5C6577', fontSize: 10 } },
-      { type: 'value', name: 'ms', nameTextStyle: { color: '#5C6577', fontSize: 10 }, splitLine: { show: false }, axisLabel: { color: '#5C6577', fontSize: 10 } }
+      { type: 'value', name: '次数', nameTextStyle: { color: p.fg3, fontSize: 10 }, splitLine: { lineStyle: { color: p.border } }, axisLabel: { color: p.fg3, fontSize: 10 } },
+      { type: 'value', name: 'ms', nameTextStyle: { color: p.fg3, fontSize: 10 }, splitLine: { show: false }, axisLabel: { color: p.fg3, fontSize: 10 } }
     ],
     series: [
-      { name: '调用次数', type: 'bar', data: rows.map((x) => x.calls), barWidth: 18, itemStyle: { color: '#C6F24E', borderRadius: [3, 3, 0, 0] } },
-      { name: '平均耗时', type: 'line', yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 5, data: rows.map((x) => x.avg_ms), lineStyle: { color: '#8A93A6', width: 1.5 }, itemStyle: { color: '#8A93A6' } }
+      { name: '调用次数', type: 'bar', data: rows.map((x) => x.calls), barWidth: 18, itemStyle: { color: p.primary, borderRadius: [3, 3, 0, 0] } },
+      { name: '平均耗时', type: 'line', yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 5, data: rows.map((x) => x.avg_ms), lineStyle: { color: p.fg2, width: 1.5 }, itemStyle: { color: p.fg2 } }
     ]
   };
 }
@@ -2880,11 +2946,13 @@ function providerOption(rows) {
 async function loadCharts() {
   try {
     const d = await api('/api/stats/breakdown');
+    const p = hudPalette();
+    const colors = chartColors();
     const statusRows = [
-      { label: '已采纳', value: (d.bank.status && d.bank.status.adopted) || 0, color: CHART_COLORS.adopted },
-      { label: '待确认', value: (d.bank.status && d.bank.status.pending) || 0, color: CHART_COLORS.pending },
-      { label: '冲突', value: (d.bank.status && d.bank.status.conflict) || 0, color: CHART_COLORS.conflict },
-      { label: '错题', value: (d.bank.status && d.bank.status.wrong) || 0, color: CHART_COLORS.wrong }
+      { label: '已采纳', value: (d.bank.status && d.bank.status.adopted) || 0, color: colors.adopted },
+      { label: '待确认', value: (d.bank.status && d.bank.status.pending) || 0, color: colors.pending },
+      { label: '冲突', value: (d.bank.status && d.bank.status.conflict) || 0, color: colors.conflict },
+      { label: '错题', value: (d.bank.status && d.bank.status.wrong) || 0, color: colors.wrong }
     ];
     if (!(statusRows.some((x) => x.value) && renderEChart('chartBankStatus', donutOption(statusRows)))) {
       $('chartBankStatus').innerHTML = statusRows.some((x) => x.value)
@@ -2907,7 +2975,7 @@ async function loadCharts() {
     }
 
     const sourceLabels = { official: '官方', calibrated: '校准', ai: 'AI', import: '导入', manual: '人工' };
-    const sourceColors = { official: 'var(--ok)', calibrated: 'var(--accent)', ai: 'var(--warn)', import: '#8A93A6', manual: '#B58BFF' };
+    const sourceColors = { official: p.ok, calibrated: p.primary, ai: p.warn, import: p.fg2, manual: p.purple };
     const sourceRows = Object.keys(sourceLabels)
       .map((k) => ({ label: sourceLabels[k], value: (d.bank.source && d.bank.source[k]) || 0, color: sourceColors[k] }));
     if (!(sourceRows.some((x) => x.value) && renderEChart('chartSources', donutOption(sourceRows)))) {
@@ -2927,14 +2995,21 @@ async function loadCharts() {
     const failPanel = $('chartFailPanel');
     if (failRows.length) {
       failPanel.style.display = '';
-      if (!renderEChart('chartFailures', barOption(failRows, '#FF6B6B'))) {
-        $('chartFailures').innerHTML = hBars(failRows.map((r) => Object.assign({}, r, { color: '#FF6B6B' })));
+      if (!renderEChart('chartFailures', barOption(failRows, p.danger))) {
+        $('chartFailures').innerHTML = hBars(failRows.map((r) => Object.assign({}, r, { color: p.danger })));
       }
     } else {
       failPanel.style.display = 'none';
     }
   } catch (e) { /* ignore */ }
 }
+
+// 折叠区展开时容器尺寸从 0 变正，ECharts 需要重新测量
+document.addEventListener('toggle', (e) => {
+  if (e.target && e.target.matches && e.target.matches('details.hud-more') && e.target.open) {
+    loadCharts();
+  }
+}, true);
 
 (function ensureECharts() {
   if (window.echarts) return;
@@ -3724,6 +3799,7 @@ async function load() {
       const alerts = (counts.P0 || 0) + (counts.P1 || 0);
       if ($('sInspect')) $('sInspect').textContent = d.latest ? alerts : '—';
       if ($('navInspectCount')) $('navInspectCount').textContent = d.latest ? (alerts || '') : '';
+      if (window.OCSHud) window.OCSHud.syncOverview();
     }).catch(() => {});
     if ($('heroBank')) $('heroBank').innerHTML = `${bankInfo.count || 0}<em>题</em>`;
     if ($('heroQuality')) $('heroQuality').textContent = rate == null ? '—' : rate + '%';
@@ -3741,6 +3817,7 @@ async function load() {
     const enabled = data.providers.filter(p => p.enabled).length;
     $('statusDot').className = 'dot ' + (enabled ? 'on' : 'off');
     $('statusText').textContent = enabled ? `运行中 · ${enabled}/${data.providers.length} 个 AI 已启用` : '没有启用的 AI，暂时无法答题';
+    if (window.OCSHud) window.OCSHud.syncOverview({ enabled, total: data.providers.length });
     render();
     renderConfig();
     loadCharts();
@@ -3752,9 +3829,17 @@ async function load() {
     loadProbes();
     loadOps();
     loadNotify();
+    if (window.OCSHud) window.OCSHud.syncOverview();
   } catch (err) {
     $('statusDot').className = 'dot off';
     $('statusText').textContent = '连接失败：' + err.message;
+    const pill = $('hudStatus');
+    if (pill) {
+      pill.classList.remove('on');
+      pill.classList.add('off');
+      const label = pill.querySelector('span');
+      if (label) label.textContent = '连接失败';
+    }
   }
 }
 
@@ -4913,13 +4998,16 @@ showSection(localStorage.getItem('gw_section') || 'overview');
     const label = dark ? '切换到浅色主题' : '切换到深色主题';
     if (btn) { btn.setAttribute('aria-label', label); btn.title = label; }
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', dark ? '#07080B' : '#F2F1EA');
+    if (meta) meta.setAttribute('content', dark ? '#282828' : '#f5f5f7');
+    if (window.OCSHud) window.OCSHud.onThemeChange(root.dataset.theme);
   }
   if (btn) {
     btn.addEventListener('click', () => {
       root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
       try { localStorage.setItem('gw_theme', root.dataset.theme); } catch (e) { /* ignore */ }
       sync();
+      // ECharts 画在 canvas 上，不会跟随 CSS 变量；换主题后重新取色
+      loadCharts();
       toast(root.dataset.theme === 'light' ? '已切换到浅色主题' : '已切换到深色主题');
     });
   }

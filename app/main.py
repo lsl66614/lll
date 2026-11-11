@@ -25,6 +25,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .answer_memory import AnswerMemory
@@ -604,6 +605,12 @@ def _snapshot_rate_limited(key: str) -> bool:
 
 app = FastAPI(title="OCS AI 网关", version="1.0.0", docs_url="/docs")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+# 纯静态资源（admin-hud.css / admin-hud.js 等）；页面本身仍走 /admin、/trace 路由
+app.mount(
+    "/static",
+    StaticFiles(directory=str(config.ADMIN_HTML.parent)),
+    name="static",
+)
 
 _http_lock = threading.Lock()
 _http_log: deque = deque(maxlen=800)
