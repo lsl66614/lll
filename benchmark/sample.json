@@ -1,0 +1,39 @@
+{
+  "name": "ocs-gateway-benchmark-smoke",
+  "created": "2026-11-11",
+  "notes": "冒烟样例，只用来验证脚本和报告格式。这四道题太简单，不能当作准确率基准。",
+  "questions": [
+    {
+      "id": "S01",
+      "type": "single",
+      "title": "中华人民共和国的首都是（ ）",
+      "options": ["北京", "上海", "广州", "深圳"],
+      "answer": "A",
+      "source": "smoke"
+    },
+    {
+      "id": "M01",
+      "type": "multiple",
+      "title": "以下哪些数是质数？",
+      "options": ["2", "4", "5", "6"],
+      "answer": ["A", "C"],
+      "source": "smoke"
+    },
+    {
+      "id": "J01",
+      "type": "judge",
+      "title": "地球是球体。",
+      "options": ["正确", "错误"],
+      "answer": "正确",
+      "source": "smoke"
+    },
+    {
+      "id": "C01",
+      "type": "completion",
+      "title": "1/2 + 1/4 = ____",
+      "options": [],
+      "answer": "3/4",
+      "source": "smoke"
+    }
+  ]
+}

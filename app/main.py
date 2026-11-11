@@ -43,6 +43,8 @@ from .bank import _LETTERS as BANK_LETTERS
 from .cache import AnswerCache
 from .config_risk import risk_summary, scan_config_risks
 from .deadlines import DeadlineStore, deadline_stamp
+from .independence import independent_providers
+from .reliability import ABSTAIN_CODE, annotate
 from .excel_bank import parse_kaoshibao
 from . import checkup as checkup_mod
 from . import inspector as inspector_mod
@@ -224,6 +226,7 @@ class Stats:
         self.web_hits = 0
         self.failovers = 0
         self.errors = 0
+        self.abstained = 0
         self.official_checked = 0
         self.official_disputed = 0
         self.official_overridden = 0
@@ -251,6 +254,7 @@ class Stats:
             self.web_hits = int(data.get("web_hits") or 0)
             self.failovers = int(data.get("failovers") or 0)
             self.errors = int(data.get("errors") or 0)
+            self.abstained = int(data.get("abstained") or 0)
             self.official_checked = int(data.get("official_checked") or 0)
             self.official_disputed = int(data.get("official_disputed") or 0)
             self.official_overridden = int(data.get("official_overridden") or 0)
@@ -279,6 +283,7 @@ class Stats:
                 "memory_hits": self.memory_hits,
                 "failovers": self.failovers,
                 "errors": self.errors,
+                "abstained": self.abstained,
                 "official_checked": self.official_checked,
                 "official_disputed": self.official_disputed,
                 "official_overridden": self.official_overridden,
@@ -356,6 +361,7 @@ class Stats:
                 "web_hits": self.web_hits,
                 "failovers": self.failovers,
                 "errors": self.errors,
+                "abstained": self.abstained,
                 "official_checked": self.official_checked,
                 "official_disputed": self.official_disputed,
                 "official_overridden": self.official_overridden,
@@ -1007,7 +1013,9 @@ def _unit_ready(providers: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if calls >= 20 and fails * 2 > calls:
             continue
         picked.append(provider)
-    return picked or providers[:3]
+    # 同一模型配多个 Key 只能算一票，否则「两个模型一致」可以靠重复配置伪造。
+    picked = independent_providers(picked)
+    return picked or independent_providers(providers)[:3]
 
 
 def _unit_vote(results: list[tuple[dict[str, Any], str | None, float | None, str | None]],
@@ -2401,10 +2409,25 @@ async def _resolve(
     )
     # 每一次真正返回给脚本的答案都记一笔 episode。题库/缓存/记忆命中也记，
     # 这样「官方答案后来被推翻时，当初是哪条路径答的」可以追到。
+    #
+    # 可靠性标注与弃答也在这里做：所有入口（/query、/ocs/search、批量的单题回退）
+    # 都会经过 _resolve，策略只在最后一层生效，避免每个分支各写一遍。
+    opts = settings.all()
     try:
         payload = json.loads(response.body.decode("utf-8"))
         data = payload.get("data") if isinstance(payload, dict) else None
         if isinstance(payload, dict) and payload.get("code") == 0 and isinstance(data, dict):
+            _reliability, reason, reject = annotate(data, opts)
+            if reject:
+                stats.bump("abstained")
+                message = f"答案可靠性不足，已弃答：{reason or '未形成独立模型共识'}"
+                _record_failure(
+                    ABSTAIN_CODE, message, qtype_raw, title,
+                    parse_options(options_raw), subject, len(images or []),
+                )
+                return _fail(ABSTAIN_CODE, message)
+            payload["data"] = data
+            response = JSONResponse(payload, status_code=response.status_code)
             _record_answer(
                 qtype_raw=qtype_raw,
                 title=title,
@@ -2705,14 +2728,17 @@ async def _ask_providers(
         if not providers:
             return None, None, 0, ["没有可用的视觉模型，请在管理台把支持图片的 AI 标记为「支持视觉」"], {"cross": "none"}
 
-    if cross and len(providers) >= 2:
+    # 交叉验证要的是两个独立模型；同一模型的多 Key 只保留第一个。
+    vote_pool = independent_providers(providers) if cross else providers
+
+    if cross and len(vote_pool) >= 2:
         picked: list[tuple[str, float | None, dict[str, Any]]] = []
         total = 0
         # 小窗口并发：既要让两个模型同时跑，又要保留失败后继续找下一个的能力
         window = max(2, min(3, int(config.MAX_CONCURRENCY)))
         index = 0
-        while index < len(providers) and len(picked) < 2:
-            batch = providers[index:index + window]
+        while index < len(vote_pool) and len(picked) < 2:
+            batch = vote_pool[index:index + window]
             index += len(batch)
             tasks = [asyncio.create_task(_call_one(p, qtype, options, messages)) for p in batch]
             try:

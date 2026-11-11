@@ -410,6 +410,19 @@
           </div>
 
           <div class="settings-group">
+            <div class="settings-group-head">不可靠时弃答 <span class="hint">默认关闭 · 让 OCS 跳过，而不是猜一个</span></div>
+            <label class="switch-row" for="setAbstain" style="margin-bottom:8px">
+              <span class="switch-copy"><strong>开启弃答</strong><small>单模型无共识、按选项位置匹配、官方复核有争议或低置信时返回失败码，脚本会跳过本题。</small></span>
+              <input type="checkbox" id="setAbstain" class="switch" />
+            </label>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <label for="setAbstainMinConf" style="margin:0">置信阈值</label>
+              <input id="setAbstainMinConf" type="number" min="0" max="1" step="0.05" style="width:90px" />
+              <span class="field-hint" style="margin-top:0">0 = 只看共识与风险标记；大于 0 时，低于该值的答案也弃答</span>
+            </div>
+          </div>
+
+          <div class="settings-group">
             <div class="settings-group-head">联网检索日预算 <span class="hint">次/天 · 缓存命中不计数</span></div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
               <input id="setWebBudget" type="number" min="1" max="5000" step="10" style="width:100px" />
@@ -1899,6 +1912,8 @@ async function loadSettings() {
   $('setWebBudget').value = s.web_daily_budget || 200;
   $('setConfWeight').checked = s.confidence_weight !== false;
   $('setConfThreshold').value = s.confidence_threshold == null ? 0 : s.confidence_threshold;
+  $('setAbstain').checked = !!s.abstain_enabled;
+  $('setAbstainMinConf').value = s.abstain_min_confidence == null ? 0 : s.abstain_min_confidence;
   state.routes = s.routes || {};
   renderRoutes();
   $('setAutoCal').checked = !!s.auto_calibrate;
@@ -3555,11 +3570,13 @@ $('btnSaveSettings').onclick = async () => {
         web_daily_budget: parseInt($('setWebBudget').value, 10) || 200,
         confidence_weight: $('setConfWeight').checked,
         confidence_threshold: parseFloat($('setConfThreshold').value) || 0,
+        abstain_enabled: $('setAbstain').checked,
+        abstain_min_confidence: parseFloat($('setAbstainMinConf').value) || 0,
         routes: collectRoutes()
       })
     });
     const routeCount = Object.values(s.routes || {}).reduce((n, items) => n + (items ? items.length : 0), 0);
-    $('settingsStatus').textContent = `交叉验证 ${s.cross_check ? '开' : '关'} · 官方复核 ${s.official_cross_check ? '开' : '关'} · 图片两阶段 ${s.image_two_stage ? '开' : '关'} · 低置信投票 ${s.low_conf_vote ? '开' : '关'} · 语义召回 ${s.semantic_match ? '开' : '关'} · 本地OCR ${s.local_ocr ? '开' : '关'} · 联网检索 ${s.web_learn ? '开' : '关'} · 加权 ${s.confidence_weight ? '开' : '关'} · 阈值 ${s.confidence_threshold || 0} · 路由 ${routeCount} 条`;
+    $('settingsStatus').textContent = `交叉验证 ${s.cross_check ? '开' : '关'} · 官方复核 ${s.official_cross_check ? '开' : '关'} · 图片两阶段 ${s.image_two_stage ? '开' : '关'} · 低置信投票 ${s.low_conf_vote ? '开' : '关'} · 弃答 ${s.abstain_enabled ? '开' : '关'} · 语义召回 ${s.semantic_match ? '开' : '关'} · 本地OCR ${s.local_ocr ? '开' : '关'} · 联网检索 ${s.web_learn ? '开' : '关'} · 加权 ${s.confidence_weight ? '开' : '关'} · 阈值 ${s.confidence_threshold || 0} · 路由 ${routeCount} 条`;
     if ($('settingsDirty')) $('settingsDirty').hidden = true;
     toast('策略已保存', 'ok');
   } catch (err) {

@@ -23,6 +23,9 @@ DEFAULTS: dict[str, Any] = {
     "local_ocr": False,
     "confidence_weight": True,
     "confidence_threshold": 0.0,
+    "abstain_enabled": False,
+    "abstain_min_confidence": 0.0,
+    "abstain_include_positional": True,
     "web_learn": False,
     "web_daily_budget": 200,
     "web_max_results": 5,
@@ -42,11 +45,13 @@ DEFAULTS: dict[str, Any] = {
 _BOOL_KEYS = ("cross_check", "image_two_stage", "inline_images", "title_fill",
               "multiple_conservative", "strict_official", "official_cross_check",
               "low_conf_vote", "semantic_match", "local_ocr", "confidence_weight",
+              "abstain_enabled", "abstain_include_positional",
               "auto_calibrate", "auto_calibrate_cross", "auto_vote",
               "auto_vote_write", "auto_resolve", "web_learn", "batch_enabled")
 _INT_KEYS = {"auto_calibrate_limit": (1, 500), "auto_vote_limit": (1, 200),
              "web_daily_budget": (1, 5000), "web_max_results": (1, 10)}
 _FLOAT_KEYS = {"confidence_threshold": (0.0, 1.0),
+               "abstain_min_confidence": (0.0, 1.0),
                "cache_retry_probability": (0.0, 1.0),
                "cache_retry_min_confidence": (0.0, 1.0)}
 
