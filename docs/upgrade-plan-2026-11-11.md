@@ -350,3 +350,37 @@ def get_for_answer(self, key: str) -> dict | None
 
 - 灰度：`CACHE_RETRY_PROBABILITY=0.1` 观察 `stats.cache_retry` 与答案变化；
 - 进入 D2-D3：`app/batch_parse.py` + `tests/test_batch_parse.py`。
+
+## 16. D2-D3 执行记录（2026-11-11，已完成）
+
+### 已落地
+
+| 项 | 文件 | 说明 |
+|---|---|---|
+| 容错解析模块 | `app/batch_parse.py`（385 行） | `parse_answer_array(raw, expected)` → `({id: {answer, confidence}}, missing)` |
+| 5 级兜底 | `app/batch_parse.py:183-211`、`:337-384` | 候选文本按序生成：直解 → 剥围栏 → 平衡括号切片 → 修复/补括号 → 正则抓取 |
+| 结构兼容 | `:220-247` | `answers/data/results/items`、顶层数组、`{id: answer}` 映射、单对象 |
+| 值归一化 | `:258-302` | 数组 `#` 连接、`null`→未答、布尔→`true/false`、`1.0`→`1`、"85%"→0.85 |
+| 裸 key 修复 | `:130-181` | 逐字符扫描，避开字符串内容；填空题答案 `x{a:b}` 不会被改坏 |
+| 截断兜底 | `:111-117` | 退到最后一个完整 `}` 再补括号，保住已输出的题 |
+| 单测 | `tests/test_batch_parse.py`（193 行，26 例） | 覆盖围栏、废话、尾逗号、中文/单引号、裸 key、截断、重复 id、别名 key、纯垃圾等 |
+
+### 关键契约
+
+- **按 id 对齐，不按下标**；`expected` 之外的 id 直接丢弃，缺失/空答案的 id 进 `missing`。
+- 空答案仍保留在 results 里（`answer=""`），同时计入 `missing`，调用方只补问缺失。
+- 重复 id 以**最后一条**为准。
+- 正则兜底只认显式 id/answer 键；不做「按顺序硬套 expected」，避免串题。
+
+### 测试（实测）
+
+- `python -m unittest tests.test_batch_parse -v` → **26 tests OK**。
+- 串联验证：`parse_answer_array` + `parse_answer_detail` 四题型
+  （单选 `b`→`B`、多选 `["A","C"]`→`A#C`、判断 `true`→`正确`、填空 `12`→`12`）全部正确。
+- 全量：`python -m unittest discover -s tests` → **536 tests OK**（510 + 26）。
+
+### 待办（D4-D5）
+
+- `build_batch_messages()`：批量提示词 + 2 题 few-shot；
+- `_call_batch_one()`：部分失败回退 `_call_one`，per-provider 串行；
+- 分片：`BATCH_MAX_ITEMS` + `BATCH_MAX_CHARS` 双阈值。

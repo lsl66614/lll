@@ -723,3 +723,35 @@ Triage this entry. If the failure was real and non-obvious, keep it and fill in 
 - Pattern-Key: vcs.fatal-error
 
 ---
+
+## [ERR-20261111-5VH] bash_failure
+
+**Logged**: 2026-11-11T09:39:36.900Z
+**Priority**: medium
+**Status**: pending
+**Area**: config
+
+### Summary
+Auto-detected 1 error signature in a `Bash` tool result.
+
+### Error
+```
+- `runtime.type-error` — TypeError: parse_answer_detail() missing 2 required positional arguments: 'text' and 'options'
+```
+
+### Context
+- Detected by the self-improvement hook on `PostToolUse` (real-time, at the moment of failure)
+- Tool: `Bash`
+- Working directory: `C:\Users\刘帅良\Documents\Qoder\2026-11-08\62711a50\ocs-ai-gateway`
+- Session: `34f323cb-05d7-4931-b26d-3afe83e61b8e`
+- Excerpts are truncated and redacted; check the transcript for full context
+
+### Suggested Fix
+Triage this entry. If the failure was real and non-obvious, keep it and fill in the actual fix; if it was transient or already handled, mark it resolved. Before keeping it, grep for the Pattern-Key(s) above and fold recurrences into the existing entry (bump `Recurrence-Count`) instead of duplicating.
+
+### Metadata
+- Source: posttooluse-error-sweep
+- Reproducible: unknown
+- Pattern-Key: runtime.type-error
+
+---
