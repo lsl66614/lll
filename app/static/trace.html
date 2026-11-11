@@ -6,6 +6,7 @@
 <title>答题链路 · OCS AI 网关</title>
 <meta name="theme-color" content="#07080B" />
 <link rel="stylesheet" href="/tokens.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230A0C0F'/%3E%3Crect x='3' y='3' width='3' height='10' fill='%23D8FF3E'/%3E%3C/svg%3E" />
 <script>
   (function () {
     try {
@@ -224,20 +225,6 @@ section.view { min-height: 0; overflow-y: auto; padding: 20px 26px 56px; }
   text-transform: none; margin-left: auto; opacity: .75;
 }
 
-.qhead { border-top-color: var(--line); }
-.qhead .tags { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; }
-.qhead .qtitle {
-  font-size: 16px; line-height: 1.75; letter-spacing: .005em;
-  word-break: break-word; max-height: 124px; overflow-y: auto; max-width: 940px;
-}
-.qhead .opts { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 22px; }
-.opt {
-  font-size: 11.5px; color: var(--muted); max-width: 340px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--mono); letter-spacing: .01em;
-}
-.opt::first-letter { color: var(--acid); }
-
 /* ---------------------------------------------------------------- waterfall */
 .wf { width: 100%; }
 .wf-axis { display: grid; grid-template-columns: 158px 1fr; gap: 10px; margin-bottom: 4px; }
@@ -336,17 +323,6 @@ section.view { min-height: 0; overflow-y: auto; padding: 20px 26px 56px; }
 .model.run .bar-mini i { background: var(--acid); }
 
 /* ---------------------------------------------------------------- right rail */
-.answer {
-  font: 600 52px/1.05 var(--mono); letter-spacing: -.02em;
-  word-break: break-all; margin: 4px 0 6px; color: var(--text);
-}
-.answer.ai { color: var(--acid); }
-.answer.err { color: var(--red); font-size: 28px; }
-.answer-sub {
-  color: var(--dim); font: 9px/1.4 var(--mono); letter-spacing: .12em;
-  text-transform: uppercase; margin-bottom: 14px;
-  padding-bottom: 12px; border-bottom: 1px solid var(--line);
-}
 .kv {
   display: flex; justify-content: space-between; gap: 12px;
   padding: 6px 0; border-bottom: 1px dotted color-mix(in srgb, var(--line) 80%, transparent);
@@ -358,13 +334,6 @@ section.view { min-height: 0; overflow-y: auto; padding: 20px 26px 56px; }
   color: var(--text); text-align: right; word-break: break-word;
   font-variant-numeric: tabular-nums;
 }
-.risk {
-  margin-top: 12px; padding: 9px 10px; border-left: 2px solid var(--line);
-  font: 10px/1.6 var(--mono); color: var(--muted); background: rgba(255, 255, 255, .02);
-}
-.risk.ok { border-left-color: var(--green); color: var(--green); }
-.risk.warn { border-left-color: var(--amber); color: var(--amber); }
-.risk.err { border-left-color: var(--red); color: var(--red); }
 aside.right .card { margin-bottom: 22px; }
 aside.right .card h3::before { background: var(--line-strong); }
 
@@ -582,6 +551,9 @@ aside.right .card h3::before { background: var(--line-strong); }
 .chain li.err b, .chain li.err span { color: var(--red); }
 .chain li.hit i { background: var(--acid); box-shadow: 0 0 0 2px rgba(216, 255, 62, .16); }
 .chain li.hit b, .chain li.hit span { color: var(--acid); }
+.chain li.miss i { background: var(--line-strong); }
+.chain li.skip i { background: transparent; border: 1px solid var(--line-strong); }
+.chain li.skip b, .chain li.skip span { color: var(--line-strong); }
 
 /* ---------------------------------------------------------------- step as details */
 .card.steps .steps { margin-top: 0; }
@@ -610,6 +582,8 @@ details.step[open] { padding-bottom: 16px; }
 @media (max-width: 1180px) {
   main { grid-template-columns: 264px minmax(0, 1fr) 272px; }
   .metric { min-width: 68px; padding: 0 11px; }
+  /* 窄屏先砍掉「平均 Token」，它的标签比数字宽，留着会挤出格子 */
+  .metric:nth-child(n+7) { display: none; }
 }
 @media (max-width: 980px) {
   main { grid-template-columns: 258px minmax(0, 1fr); }
@@ -886,7 +860,16 @@ details.step[open] { padding-bottom: 16px; }
   /* 结论置顶：答案、来源、置信度、耗时一行看完，不用滚到底。 */
   function renderVerdictBar(t) {
     var r = t.result || {};
+    var isBatch = t.qtype === 'batch';
     var ans = answerOf(t);
+    var label = '最终答案';
+    if (isBatch) {
+      var items = (t.batch_items || []).length;
+      var total = Number(r.items != null ? r.items : items) || items;
+      var resolved = Number(r.resolved != null ? r.resolved : items) || 0;
+      ans = resolved + ' / ' + total + ' 题';
+      label = '本批解析';
+    }
     var tone = t.status === 'error' ? 'err' : (t.status === 'running' ? 'run' : 'ok');
     var facts = [];
     if (r.confidence != null) facts.push('置信度 ' + Number(r.confidence).toFixed(2));
@@ -902,9 +885,9 @@ details.step[open] { padding-bottom: 16px; }
     else if (r.risk === true) risk = '<div class="v-risk warn">低置信 / 无共识，已标记为风险答案</div>';
     else if (r.risk === false) risk = '<div class="v-risk ok">共识充分，按正常答案返回</div>';
     return '<div class="verdict tone-' + tone + '">' +
-      '<div class="v-main"><span class="v-lab">最终答案</span>' +
+      '<div class="v-main"><span class="v-lab">' + label + '</span>' +
       '<span class="v-ans' + (ans.length > 12 ? ' long' : '') + '">' + esc(ans) + '</span>' +
-      '<span class="v-src">' + esc(srcLabel(t)) + '</span></div>' +
+      '<span class="v-src">' + esc(isBatch ? '批量作答' : srcLabel(t)) + '</span></div>' +
       '<div class="v-facts">' + facts.map(function (f) {
         return '<span>' + esc(f) + '</span>';
       }).join('') + '</div>' + risk + '</div>';
@@ -920,7 +903,7 @@ details.step[open] { padding-bottom: 16px; }
     var items = CHAIN_ORDER.map(function (name) {
       var s = by[name];
       var tone = s ? statusTone(s.status) : 'mute';
-      var cls = (s && s.status === 'hit') ? 'hit' : tone;
+      var cls = !s ? 'skip' : (s.status === 'hit' ? 'hit' : (s.status === 'miss' ? 'miss' : tone));
       var text = s ? statusLabel(s.status) : '未经过';
       if (s && s.answer) text += ' · ' + s.answer;
       return '<li class="' + cls + '" title="' + esc(stageLabel(name) + ' · ' + text) + '">' +
@@ -964,7 +947,7 @@ details.step[open] { padding-bottom: 16px; }
             : (m.status === 'running' ? '仍在思考，思考过程会随答案一起返回。'
               : '该接口本次未返回思考内容（部分模型只给答案）')) + '</pre>';
       return '<details class="step ' + tone + '" data-k="m' + i + '"' +
-        ((winner === m || models.length === 1) ? ' open' : '') + '>' +
+        ((winner === m || models.length === 1 || (!winner && i === 0)) ? ' open' : '') + '>' +
         '<summary class="step-head"><span class="dot-status ' + tone + '"></span>' +
         '<span class="sname">' + esc(m.name) + '</span>' +
         (meta.length ? '<span class="smeta">' + esc(meta.join(' · ')) + '</span>' : '') +
