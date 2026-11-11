@@ -255,7 +255,6 @@
   .task-check { font-family: var(--mono); font-size: 10px; color: var(--ok); text-align: right; }
   @media (max-width: 980px) { .acct-head { grid-template-columns: 1fr 16px; } .acct-live, .acct-meta { grid-column: 1 / -1; text-align: left; } .course-row { grid-template-columns: 1fr; gap: 4px; } .course-row .pr-num, .course-row .pr-time { text-align: left; } }
 
-  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
   .chart-body { padding: 16px; }
   .donut-wrap { position: relative; width: 132px; height: 132px; margin: 0 auto 12px; }
   .donut { width: 132px; height: 132px; display: block; }
@@ -283,7 +282,6 @@
     .app { flex-direction: column; }
     .main { margin-left: 0; padding: 20px 16px 60px; }
     .stats { grid-template-columns: repeat(2, 1fr); }
-    .charts { grid-template-columns: 1fr; }
     .provider { flex-wrap: wrap; }
     .p-actions { max-width: none; justify-content: flex-start; }
     .row2 { grid-template-columns: 1fr; }
@@ -596,7 +594,6 @@
     .menu-btn, .icon-btn { width: 40px; height: 40px; }
     .nav-item { padding-top: 10px; padding-bottom: 10px; }
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .charts { grid-template-columns: 1fr; }
     .provider { flex-wrap: wrap; }
     .p-actions { max-width: none; justify-content: flex-start; }
     .row2 { grid-template-columns: 1fr; }
