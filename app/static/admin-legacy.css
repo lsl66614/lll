@@ -106,9 +106,6 @@
   .stat b { display: block; font-family: var(--mono); font-size: 25px; font-weight: 600; letter-spacing: -1px; margin-top: 6px; }
   .stat b::after { content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 7px; vertical-align: 3px; border-radius: 1px; background: var(--accent); opacity: .85; }
 
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
-  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(255, 255, 255, .018), transparent); }
-  .panel-head h2 { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: .2px; }
   .hint { color: var(--faint); font-size: 11.5px; }
 
   .provider { display: flex; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); align-items: flex-start; }
@@ -457,13 +454,6 @@
   .stat b::after { width: 6px; height: 6px; border-radius: 2px; vertical-align: 4px; }
 
   /* ---------------------------------------------------------- 面板 / 通用 */
-  .panel { border-radius: var(--radius); box-shadow: var(--shadow-panel); margin-bottom: 16px; }
-  .panel-head { padding: 14px 17px; }
-  .panel-head h2 { font-family: var(--font-display); font-size: 13.5px; letter-spacing: .1px; }
-  .panel-head h2::before {
-    content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 1px;
-    margin-right: 8px; vertical-align: 2px; background: var(--accent); opacity: .82;
-  }
   .hint { font-size: 11.5px; }
   .tips { padding: 16px 17px; }
   .empty { padding: 46px 20px; }
@@ -625,7 +615,6 @@
     .stats { gap: 10px; }
     .stat { padding: 13px 14px; }
     .stat b { font-size: 25px; }
-    .panel-head { flex-wrap: wrap; gap: 5px; }
     .settings-bar { bottom: 8px; padding: 11px 12px; }
     .settings-bar .hint { flex-basis: 100%; order: 3; min-width: 0; }
   }
@@ -666,8 +655,4 @@
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     }
     .topbar-actions .primary { flex: none; white-space: nowrap; }
-  }
-  /* 说明文字在窄屏允许换行，别硬截断成省略号 */
-  @media (max-width: 720px) {
-    .panel-head .hint { white-space: normal; }
   }

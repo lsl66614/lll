@@ -268,8 +268,8 @@
     </section>
 
     <section class="section" data-section="bank">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>本地题库<span class="tier auto" title="录入、导入、批量操作、标记错误即时生效">闭环</span></h2>
           <span class="hint">答题时优先命中，未命中再走 AI</span>
         </div>
@@ -312,8 +312,8 @@
         <div id="bankList"></div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-top:16px;">
+        <div class="hud-card-head">
           <h2>截图搜题<span class="tier ext" title="需要可用的视觉模型，否则无法转写">依赖外部</span></h2>
           <span class="hint">视觉转写 + 题库相似检索 · 不提交任何作答</span>
         </div>
@@ -331,8 +331,8 @@
     </section>
 
     <section class="section" data-section="subjects">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>课程自动分类<span class="tier auto" title="规则保存后立即参与 /query 分类">闭环</span></h2>
           <span class="hint">未填专业 / 填「默认」时按关键词识别</span>
         </div>
@@ -349,8 +349,8 @@
     </section>
 
     <section class="section" data-section="strategy">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>答题策略<span class="tier auto" title="策略开关保存后立即参与 /query">闭环</span></h2>
           <span class="hint">保存后立即生效</span>
         </div>
@@ -431,8 +431,8 @@
     </section>
 
     <section class="section" data-section="connect">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>接入 OCS<span class="tier auto" title="生成的配置可直接粘贴到 OCS 题库配置">闭环</span></h2>
           <span class="hint">悬浮窗 → 设置 → 题库配置</span>
         </div>
@@ -458,8 +458,8 @@
     </section>
 
     <section class="section" data-section="ops">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>缓存<span class="tier semi" title="缓存只省 token，和本地题库分开">半自动</span></h2>
           <span class="hint">同一道题只花一次 token</span>
         </div>
@@ -476,8 +476,8 @@
     </section>
 
     <section class="section" data-section="conflicts">
-      <div class="panel" style="margin-bottom:14px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-bottom:14px;">
+        <div class="hud-card-head">
           <h2>最近做错的题<span class="tier auto" title="结果页一回传就出现在这里；不轮询模型">实时</span></h2>
           <span class="hint" id="recentFeedbackHint">你选了什么 / 官方答案是什么 / 题库与记忆有没有吸收</span>
         </div>
@@ -493,8 +493,8 @@
           <div id="recentFeedbackList" style="margin-top:10px;"></div>
         </div>
       </div>
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>冲突裁决<span class="tier semi" title="裁决结果需人工采纳；自动裁决默认关闭">半自动</span></h2>
           <span class="hint">当前答案 / 历史答案 / 错题记录并排，点按钮直接定案</span>
         </div>
@@ -518,8 +518,8 @@
     </section>
 
     <section class="section" data-section="inspector">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>质量中心<span class="tier semi" title="只读：不写题库、不改答案；P0 可走通知通道">只读</span></h2>
           <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:10px; min-width:0;">
             <div role="tablist" aria-label="质量中心视图" style="display:flex; flex:0 0 auto; gap:4px; padding:3px; border:1px solid var(--line); border-radius:8px; background:var(--panel-2);">
@@ -561,8 +561,8 @@
     </section>
 
     <section class="section" data-section="failures">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>未答题目<span class="tier auto" title="/query 非 0 时自动记录；同一题只留一行，答对后自动消失">闭环</span></h2>
           <span class="hint">同一道题只保留一行；重试成功或补录后自动消失</span>
         </div>
@@ -579,8 +579,8 @@
     </section>
 
     <section class="section" data-section="snapshots">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>选项快照<span class="tier auto" title="答题页上报的选项真实内容；快照保留 10 分钟，答案按选项指纹保存，选项重排后仍能重映射">闭环</span></h2>
           <span class="hint" id="snapStats">—</span>
         </div>
@@ -596,8 +596,8 @@
     </section>
 
     <section class="section" data-section="memory">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>答题记忆<span class="tier auto" title="事件级 episode + 题目级记忆；只有官方/人工/投票确认过的答案可直接复用">闭环</span></h2>
           <span class="hint">题库之外的第二层：见过没有、谁答对过、错在哪</span>
         </div>
@@ -625,8 +625,8 @@
     </section>
 
     <section class="section" data-section="progress">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>进度监控<span class="tier ext" title="需要用户脚本上报目录数据，未上报时为空">依赖外部</span></h2>
           <span class="hint">油猴脚本上报 · 每 15 秒刷新</span>
         </div>
@@ -646,8 +646,8 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-top:16px;">
+        <div class="hud-card-head">
           <h2>测验答案发布状态<span class="tier ext" title="需要用户脚本上报测验页数据">依赖外部</span></h2>
           <span class="hint">来自回看页回捞结果 · 已发布才能取到官方答案</span>
         </div>
@@ -661,8 +661,8 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-top:16px;">
+        <div class="hud-card-head">
           <h2>待做作业 / 测验<span class="tier ext" title="来自用户脚本上报的目录数据">依赖外部</span></h2>
           <span class="hint">只读扫描，不进入、不提交</span>
         </div>
@@ -677,8 +677,8 @@
     </section>
 
     <section class="section" data-section="automation">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>自动任务<span class="tier semi" title="备份/去重自动完成；校准与投票只出候选，投票默认 dry-run">半自动</span></h2>
           <span class="hint">每天 03:00 随每日任务执行（也可点下方“立即执行”）</span>
         </div>
@@ -696,8 +696,8 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-top:16px;">
+        <div class="hud-card-head">
           <h2>手动校准与投票<span class="tier semi" title="校准只生成 pending 候选，不会自动采纳；投票默认 dry-run">半自动</span></h2>
           <span class="hint">与上方自动任务同一批能力，按需手动触发</span>
         </div>
@@ -728,8 +728,8 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-top:16px;">
+        <div class="hud-card-head">
           <h2>探针状态<span class="tier ext" title="需要用户脚本每 5 分钟心跳上报">依赖外部</span></h2>
           <span class="hint">心跳 5 分钟一次 · 超过 15 分钟视为离线</span>
         </div>
@@ -743,8 +743,8 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-top:16px;">
+        <div class="hud-card-head">
           <h2>通知推送<span class="tier ext" title="依赖 Server酱 / Bark / webhook 外部服务">依赖外部</span></h2>
           <span class="hint">每日任务报告 · Server酱 / Bark / 通用 webhook</span>
         </div>
@@ -765,8 +765,8 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-head">
+      <div class="hud-card" style="margin-top:16px;">
+        <div class="hud-card-head">
           <h2>运维日志</h2>
           <span class="hint">每日 03:00 自动执行：备份 / 近似去重预演 / 公式索引巡检 / 冲突投票预演</span>
         </div>
@@ -782,8 +782,8 @@
     </section>
 
     <section class="section" data-section="deadlines">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>DDL 看板<span class="tier auto" title="本地增删改即时生效，可按截止日排序">闭环</span></h2>
           <span class="hint">测验/作业/考试截止时间 · 来自学习页整批上报</span>
         </div>
@@ -803,8 +803,8 @@
     </section>
 
     <section class="section" data-section="unit">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>单元测试 · 答题过程<span class="tier ext" title="需要用户脚本上报逐题作答记录">依赖外部</span></h2>
           <span class="hint">只读监控 · 答案定稿后请在平台手动提交</span>
         </div>
@@ -821,15 +821,15 @@
           <div id="unitList" style="margin-top:12px;"></div>
         </div>
       </div>
-      <div class="panel" style="margin-top:16px">
-        <div class="panel-head"><h2>提交前检查<span class="tier auto" title="直接读取当前答题状态给出风险结论">闭环</span></h2><span class="hint">风险题 > 0 不建议提交</span></div>
+      <div class="hud-card" style="margin-top:16px">
+        <div class="hud-card-head"><h2>提交前检查<span class="tier auto" title="直接读取当前答题状态给出风险结论">闭环</span></h2><span class="hint">风险题 > 0 不建议提交</span></div>
         <div class="tips"><div id="unitChecklist" class="hint">暂无数据</div></div>
       </div>
     </section>
 
     <section class="section" data-section="backup">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="hud-card">
+        <div class="hud-card-head">
           <h2>备份与恢复<span class="tier auto" title="一键备份/恢复全量数据">闭环</span></h2>
           <span class="hint">含题库、模型 Key、缓存与统计（Key 为明文，备份请勿外传）</span>
         </div>
@@ -845,7 +845,7 @@
       </div>
     </section>
     <section class="section" data-section="install">
-      <div class="panel" style="padding:0; overflow:hidden;">
+      <div class="hud-card" style="padding:0; overflow:hidden;">
         <iframe src="/install" title="脚本安装" style="width:100%; height:calc(100vh - 150px); border:0; display:block; background:#0A0B0E;"></iframe>
       </div>
     </section>
@@ -1530,7 +1530,7 @@ function renderCheckupLight(light) {
     (s) => sampleLine(s.canonical_id ? `data-goto-item="${esc(s.canonical_id)}"` : '',
       `· 组 ${esc(String(s.canonical_id || '').slice(0, 8))} [${esc(s.type)}] ${esc(s.title)} — ${esc((s.answers || []).join(' ≠ '))}`));
   $('checkupLight').innerHTML = `
-    <div class="panel-head" style="padding:0 0 8px;"><h2>附：轻量指标</h2><span class="hint">不读快照，实时计算 · 点样例直达题库</span></div>
+    <div class="hud-section-head"><h3>附：轻量指标</h3><span class="hint">不读快照，实时计算 · 点样例直达题库</span></div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px;">${cards}</div>
     ${detail.join('')}`;
 }
@@ -1589,7 +1589,7 @@ function renderCheckupSnapshot(rep) {
     ? `已排除：快照导入题 ${rep.excluded.imported} 条、判断题真值歧义 ${rep.excluded.ambiguous_judge} 条（口径同 scripts/verify_holdout.py）`
     : '';
   box.innerHTML = `
-    <div class="panel-head" style="padding:0 0 8px;"><h2>离线快照体检</h2><span class="hint">平台真值 = 快照结果页</span></div>
+    <div class="hud-section-head"><h3>离线快照体检</h3><span class="hint">平台真值 = 快照结果页</span></div>
     <div class="hint" style="margin-bottom:4px;">${meta}</div>
     ${excluded ? `<div class="hint" style="margin-bottom:10px; color:var(--faint);">${esc(excluded)}</div>` : ''}
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px;">
@@ -1714,12 +1714,12 @@ function renderInspector(d) {
     checkupMetric('巡检耗时', (latest.elapsed_ms || 0) + 'ms', '')
   ].join('');
   $('inspectSummaryBox').innerHTML = latest.ai_summary
-    ? `<div class="panel-head" style="padding:0 0 8px;"><h2>AI 简报</h2><span class="hint">只总结巡检结果，不参与判定</span></div>
+    ? `<div class="hud-section-head"><h3>AI 简报</h3><span class="hint">只总结巡检结果，不参与判定</span></div>
        <div style="border:1px solid var(--line); border-radius:8px; padding:12px 14px; background:var(--panel-2); white-space:pre-wrap; font-size:12.5px; line-height:1.7;">${esc(latest.ai_summary)}</div>`
     : '<div class="hint" style="color:var(--faint);">还没有 AI 简报，点「生成 AI 摘要」。</div>';
   const snap = latest.snapshot || {};
   $('inspectLatest').innerHTML = `
-    <div class="panel-head" style="padding:0 0 8px;"><h2>最近一次巡检</h2>
+    <div class="hud-section-head"><h3>最近一次巡检</h3>
       <span class="hint">${esc(inspectWhen(latest.at))} · 题库 ${esc(String(latest.total))} 条 · 快照${snap.included ? '已体检' : '未跑'}${snap.included && snap.holdout ? '（hold-out ' + esc(String(snap.holdout)) + '）' : ''}${snap.cached ? ' · 缓存' : ''}</span>
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:12px;">${cards}</div>
@@ -1738,7 +1738,7 @@ function renderInspector(d) {
     ];
   });
   $('inspectHistory').innerHTML = rows.length
-    ? `<div class="panel-head" style="padding:0 0 8px;"><h2>巡检历史</h2><span class="hint">保留最近 50 次</span></div>` +
+    ? `<div class="hud-section-head"><h3>巡检历史</h3><span class="hint">保留最近 50 次</span></div>` +
       checkupTable(['时间', '题库', 'P0', 'P1', 'P2', '耗时', 'AI 简报'], rows)
     : '';
 }
@@ -2808,7 +2808,7 @@ async function loadReplay() {
         ? `<button class="mini" data-jump="${esc(it.url.split('#')[0] + '#/learn/content?type=detail&cid=' + it.cid)}">跳转</button> ` : '';
       return head + `<div class="task-item"><span class="task-type">视频</span><span class="task-name" title="${esc((it.chapter || '') + ' / ' + (it.lesson || ''))}">${esc(it.chapter ? it.chapter + ' · ' : '')}${esc(it.lesson ? it.lesson + ' · ' : '')}${esc(it.title)}</span><span class="task-check">${jump}<button class="mini" data-mcopy="${esc(it.title)}">复制</button></span></div>`;
     }).join('');
-    wrap.innerHTML = `<div class="panel"><div class="panel-head"><h2>已看视频（${items.length}）</h2><span class="hint">手动复播 · 1× 前台播放</span></div>
+    wrap.innerHTML = `<div class="hud-card"><div class="hud-card-head"><h2>已看视频（${items.length}）</h2><span class="hint">手动复播 · 1× 前台播放</span></div>
       <div class="tips">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
           <button id="btnReplayNext">打开下一条</button>
@@ -2859,7 +2859,7 @@ function renderMissing() {
     if (key !== last) { last = key; head = `<div class="task-chapter">${esc(it.account)} · ${esc(it.course)}</div>`; }
     return head + `<div class="task-item" data-title="${esc((it.chapter ? it.chapter + ' · ' : '') + (it.lesson ? it.lesson + ' · ' : '') + it.title)}"><span class="task-type">${esc(types[it.type] || it.type)}</span><span class="task-name" title="${esc((it.chapter || '') + ' / ' + (it.lesson || ''))}">${esc(it.chapter ? it.chapter + ' · ' : '')}${esc(it.lesson ? it.lesson + ' · ' : '')}${esc(it.title)}</span><span class="task-check">${it.cid ? `<button class="mini" data-mjump="${esc((it.url || '').split('#')[0] + '#/learn/content?type=detail&cid=' + it.cid)}">跳转</button> ` : ''}<button class="mini" data-mcopy="${esc((it.chapter ? it.chapter + ' · ' : '') + (it.lesson ? it.lesson + ' · ' : '') + it.title)}">复制</button></span></div>`;
   }).join('');
-  wrap.innerHTML = `<div class="panel"><div class="panel-head"><h2>未完成任务（${items.length}${filter ? ' / ' + (d.total || 0) : ''}）</h2><span class="hint">来自最近一次目录上报</span></div>
+  wrap.innerHTML = `<div class="hud-card"><div class="hud-card-head"><h2>未完成任务（${items.length}${filter ? ' / ' + (d.total || 0) : ''}）</h2><span class="hint">来自最近一次目录上报</span></div>
     <div class="tips">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
         <select id="missingTypeFilter" style="width:auto">
