@@ -566,6 +566,17 @@ aside.right .card h3::before { background: var(--line-strong); }
 .rel-f .v.err { color: var(--red); }
 .rel-rule { margin-top: 9px; color: var(--dim); font: 9px/1.7 var(--mono); letter-spacing: .02em; }
 .rel-rule b { color: var(--text); font-weight: 600; }
+.rel-more { margin-top: 1px; }
+.rel-more > summary {
+  cursor: pointer; list-style: none; padding: 7px 10px;
+  border: 1px solid var(--line-soft); border-top: 0; background: var(--bg-elev);
+  color: var(--dim); font: 9px/1.5 var(--mono); letter-spacing: .06em;
+}
+.rel-more > summary::-webkit-details-marker { display: none; }
+.rel-more > summary::before { content: "+ "; color: var(--acid); }
+.rel-more[open] > summary::before { content: "− "; }
+.rel-more > summary:hover { color: var(--muted); }
+.rel-more .rel-grid { border-top: 0; }
 
 /* ---------------------------------------------------------------- model table */
 .mtab { border: 1px solid var(--line-soft); font: 10.5px/1.55 var(--mono); }
@@ -601,6 +612,17 @@ aside.right .card h3::before { background: var(--line-strong); }
 .mtag.empty { color: var(--dim); }
 .mtag.run { color: var(--amber); }
 .step-head .mtag { margin-left: 2px; }
+.modelscard .mtab { margin-bottom: 2px; }
+.steps-sub {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.steps-sub span:first-child {
+  color: var(--muted); font: 9px/1.4 var(--mono);
+  letter-spacing: .16em; text-transform: uppercase;
+}
+.steps-sub .hint { color: var(--dim); font: 9px/1.4 var(--mono); }
+.modelscard details.step:first-of-type { border-top: 0; padding-top: 10px; }
 
 /* ---------------------------------------------------------------- chain */
 .chain { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
@@ -1147,13 +1169,6 @@ details.step[open] { padding-bottom: 16px; }
       fpush('加权票', '没有加权投票记录', '');
     }
 
-    var cross = r.cross || (vote.kind === 'cross' ? vote.cross : '');
-    var crossTone = !cross ? '' : ((cross === 'agree' || cross === 'unit-vote')
-      ? 'ok' : (cross === 'disagree' ? 'err' : 'warn'));
-    fpush('交叉验证', cross
-      ? (CROSS_LABEL[cross] || statusLabel(cross) || String(cross))
-      : (r.consensus ? String(r.consensus) : '未启用'), crossTone);
-
     var inp = t.input || {};
     var titleLen = Number(inp.title_len) || 0;
     var titleModel = inp.title_model != null ? Number(inp.title_model) : titleLen;
@@ -1162,6 +1177,13 @@ details.step[open] { padding-bottom: 16px; }
     } else {
       fpush('输入完整性', '题干与选项完整进入模型', 'ok');
     }
+
+    var cross = r.cross || (vote.kind === 'cross' ? vote.cross : '');
+    var crossTone = !cross ? '' : ((cross === 'agree' || cross === 'unit-vote')
+      ? 'ok' : (cross === 'disagree' ? 'err' : 'warn'));
+    fpush('交叉验证', cross
+      ? (CROSS_LABEL[cross] || statusLabel(cross) || String(cross))
+      : (r.consensus ? String(r.consensus) : '未启用'), crossTone);
 
     fpush('模型状态', answered.length + ' 个作答 · ' + errors.length + ' 个失败 · ' +
       cancelled.length + ' 个取消', errors.length ? 'warn' : 'ok');
@@ -1246,26 +1268,29 @@ details.step[open] { padding-bottom: 16px; }
 
   function renderReliability(t) {
     var a = assessReliability(t);
-    var factors = a.factors.map(function (f) {
+    var cell = function (f) {
       return '<div class="rel-f"><span class="k">' + esc(f.k) + '</span>' +
         '<span class="v' + (f.tone ? ' ' + f.tone : '') + '">' + esc(f.v) + '</span></div>';
-    }).join('');
+    };
+    var primary = a.factors.slice(0, 4);
+    var extra = a.factors.slice(4);
+    var more = extra.length
+      ? '<details class="rel-more" data-k="relmore"><summary>展开其余 ' + extra.length +
+        ' 项</summary><div class="rel-grid">' + extra.map(cell).join('') + '</div></details>'
+      : '';
     return '<div class="card rel"><h3>答案可靠度' +
       '<span class="hint">按来源 / 共识 / 异议 / 输入完整性判级，不是模型自评分</span></h3>' +
       '<div class="rel-head"><span class="rel-grade ' + a.level + '">' +
       esc(REL_LABEL[a.level]) + '</span><span class="rel-why">' + esc(a.why) + '</span></div>' +
-      (factors ? '<div class="rel-grid">' + factors + '</div>' : '') +
-      '<div class="rel-rule">判级顺序：官方/题库 &gt; 多模型一致（≥2 且过半）&gt; 交叉验证 &gt; ' +
-      '单模型自评；出现异议、risk 标记或题干截断都会降级。</div></div>';
+      (primary.length ? '<div class="rel-grid">' + primary.map(cell).join('') + '</div>' : '') +
+      more +
+      '<div class="rel-rule">判级：官方/题库 → 多模型一致 → 交叉验证 → 单模型自评；' +
+      '异议 / risk / 题干截断会降级。</div></div>';
   }
 
-  function renderModelTable(t) {
-    if (t.qtype === 'batch') return '';
+  /* 表格与思考合成一张卡：上面一眼看谁赞成/反对，下面直接读推理。 */
+  function modelTableRows(t) {
     var models = t.models || [];
-    if (!models.length) {
-      return '<div class="card"><h3>模型做题对照</h3>' +
-        '<div class="empty-note">本次没有调用模型：官方 / 题库 / 缓存直接命中。</div></div>';
-    }
     var r = t.result || {};
     var a = assessReliability(t);
     var rows = models.map(function (m, i) {
@@ -1292,11 +1317,9 @@ details.step[open] { padding-bottom: 16px; }
         ' · 一致 ' + a.agree + ' / 异议 ' + a.dissent +
         (a.errors ? ' / 失败 ' + a.errors : '') + '</div>'
       : '';
-    return '<div class="card"><h3>模型做题对照' +
-      '<span class="hint">谁赞成、谁反对、谁没答上来；点行看原始输出</span></h3>' +
-      base + '<div class="mtab"><div class="mrow mhead"><span>模型</span><span>答案</span>' +
+    return base + '<div class="mtab"><div class="mrow mhead"><span>模型</span><span>答案</span>' +
       '<span>判定</span><span>置信</span><span>耗时</span><span class="mtok">Token</span></div>' +
-      rows + '</div></div>';
+      rows + '</div>';
   }
 
   /* 批量请求多一个「批量调用」阶段；单题不显示这一格，避免恒为「未经过」。 */
@@ -1325,17 +1348,9 @@ details.step[open] { padding-bottom: 16px; }
       '<ol class="chain">' + items + '</ol></div>';
   }
 
-  /* 模型思考：每个模型一条可折叠记录，胜出的默认展开。 */
-  function renderSteps(t) {
-    if (t.qtype === 'batch') {
-      return '<div class="card steps"><h3>模型思考</h3>' +
-        '<div class="empty-note">批量调用不记录逐模型思考；本批每题的答案见上方批次表。</div></div>';
-    }
+  /* 每个模型一条可折叠记录，胜出的默认展开。 */
+  function stepRows(t) {
     var models = t.models || [];
-    if (!models.length) {
-      return '<div class="card steps"><h3>模型思考</h3>' +
-        '<div class="empty-note">本题没有调用模型（官方 / 题库 / 记忆 / 缓存命中）。</div></div>';
-    }
     var r = t.result || {};
     var winner = models.filter(function (m) { return m.answer && m.answer === r.answer; })[0] || null;
     var rows = models.map(function (m, i) {
@@ -1367,9 +1382,25 @@ details.step[open] { padding-bottom: 16px; }
         (meta.length ? '<span class="smeta">' + esc(meta.join(' · ')) + '</span>' : '') +
         '<span class="sans' + ansCls + '">' + ans + '</span></summary>' + body + '</details>';
     }).join('');
-    return '<div class="card steps"><h3>模型思考' +
-      '<span class="hint">点开看推理，胜出的模型默认展开</span></h3>' +
-      '<div class="steps">' + rows + '</div></div>';
+    return '<div class="steps">' + rows + '</div>';
+  }
+
+  function renderModelSection(t) {
+    if (t.qtype === 'batch') {
+      return '<div class="card"><h3>模型做题</h3>' +
+        '<div class="empty-note">批量调用不记录逐模型思考与对照；本批每题答案见上方批次表。</div></div>';
+    }
+    var models = t.models || [];
+    if (!models.length) {
+      return '<div class="card"><h3>模型做题</h3>' +
+        '<div class="empty-note">本次没有调用模型：官方 / 题库 / 缓存直接命中。</div></div>';
+    }
+    return '<div class="card modelscard"><h3>模型做题' +
+      '<span class="hint">谁赞成、谁反对；下方直接看推理</span></h3>' +
+      modelTableRows(t) +
+      '<div class="steps-sub"><span>思考过程</span><span class="hint">' +
+      models.length + ' 个模型 · 胜出者默认展开</span></div>' +
+      stepRows(t) + '</div>';
   }
 
   /* ---------------------------------------------------------------- question */
@@ -1455,7 +1486,7 @@ details.step[open] { padding-bottom: 16px; }
 
   function renderSolve(t) {
     return renderVerdictBar(t) + renderReliability(t) + renderQuestionCard(t) +
-      renderChain(t) + renderModelTable(t) + renderSteps(t);
+      renderChain(t) + renderModelSection(t);
   }
 
   /* ---------------------------------------------------------------- waterfall */
@@ -1513,7 +1544,7 @@ details.step[open] { padding-bottom: 16px; }
   }
 
   /* ---------------------------------------------------------------- models */
-  function renderModels(t) {
+  function renderModelCards(t) {
     var models = t.models || [];
     if (!models.length) {
       return '<div class="card"><h3>模型作答</h3><div style="color:var(--dim);font-size:11px">本题未调用模型（题库 / 缓存 / 记忆命中）。</div></div>';
@@ -1673,7 +1704,7 @@ details.step[open] { padding-bottom: 16px; }
       $('detail').innerHTML = renderSolve(t) +
         '<details class="deep" data-k="deep"><summary>' + '深层信息 · 瀑布图 / 模型面板 / 事件流' +
         '<span class="hint">' + '排查慢在哪、谁失败了再看' + '</span></summary>' +
-        renderWaterfall(t) + renderModels(t) + renderTimeline(t) + '</details>' +
+        renderWaterfall(t) + renderModelCards(t) + renderTimeline(t) + '</details>' +
         '<div class="foot">trace ' + esc(t.id) + ' · ' + new Date((t.started || 0) * 1000).toLocaleString('zh-CN') + '</div>';
       Array.prototype.forEach.call(
         document.querySelectorAll('#detail details[data-k]'),
