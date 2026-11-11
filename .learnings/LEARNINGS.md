@@ -55,3 +55,12 @@
 - **What happened:** 用户说「orca 中那个 codex 对话」，我按 `orca terminal list` / `orchestration worker-list` 都为空，判断该会话不在 Orca，判断错了。实际依据在会话日志头部：`~/.codex/sessions/<日期>/rollout-*.jsonl` 的 `session_meta.payload.originator` 写着 `orca_desktop` —— Orca 的 agent chat 由 codex app-server 驱动，不占 terminal、也不是受监督 worker；Orca CLI 没有任何 chat 读取/发送命令（325 个命令里只有 `chat rename`）。
 - **Do differently:** 判断一个 Codex 会话归谁管，先看 rollout 的 `session_meta.originator`，不要用 terminal/worker 列表反推。既有 chat 只能只读监督（解析 rollout jsonl）；要能 send/stop 必须用 `orca orchestration worker-start --agent codex` 另起受监督 worker，不能指望接管已有 chat。
 - **Where:** `~/.codex/sessions/`、`orca orchestration`、`orca terminal list`
+
+## 2026-11-11 — Codex 自述的行号+行为要逐条抽验
+
+- **Pattern-Key:** codex/self-report/verify-lines
+- **Category:** best_practice
+- **What happened:** 第 12 轮 Codex 自述「值归一化：`"85%"`→`0.85`（`:258`）」，实际 `:258` 是 `_normalize_answer`（`"85%"` 原样返回），百分号转换在 `:276` 的 `_confidence`。同轮另外 5 处行号与行为核对一致，全量 536 用例通过。
+- **Do differently:** 自述里的「行号 + 行为」逐条抽验：读对应行、跑一次最小调用。行号偏移本身无害，但行为挂错函数会掩盖真实逻辑；发布前以实测为准。
+- **Where:** `app/batch_parse.py:258/276`、`docs/upgrade-plan-2026-11-11.md`
+
