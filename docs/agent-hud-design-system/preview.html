@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Agent HUD · Design System</title>
+<style>
+  :root {
+    --background: #282828;
+    --foreground: #f5f5f7;
+    --card: #ffffff0d;
+    --popover: #303030;
+    --primary: #0a84ff;
+    --secondary: #ffffff14;
+    --muted: #ffffff14;
+    --muted-foreground: #98989d;
+    --border: #ffffff1f;
+    --input: #ffffff24;
+    --ring: #0a84ff;
+    --sidebar: #1f1f1f;
+    --mint: #32d583;
+    --island-fill: #000;
+    --island-outline: #ffffff24;
+    --segment-selected: #ffffff3d;
+    --settings-card-border: #ffffff11;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font: 13px/18px var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { width: 1180px; margin: 0 auto; padding: 28px 0 48px; }
+
+  header.top { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; }
+  h1 { margin: 0 0 4px; font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--muted-foreground); font-size: 11px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; max-width: 560px; justify-content: flex-end; }
+  .chip {
+    height: 20px; display: inline-flex; align-items: center; padding: 0 8px;
+    border: 1px solid var(--border); border-radius: 5px; font-size: 10px;
+    font-weight: 500; color: var(--foreground); background: var(--card);
+  }
+  .chip b { color: var(--primary); font-weight: 600; margin-right: 4px; }
+
+  h2 {
+    margin: 26px 0 10px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground);
+  }
+  h2 span { color: var(--foreground); letter-spacing: 0; text-transform: none; font-size: 13px; margin-right: 8px; }
+
+  .card {
+    border: 1px solid var(--border); background: var(--card);
+    border-radius: 12px; padding: 14px;
+  }
+  .grid { display: grid; gap: 10px; }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .sw { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; background: #ffffff08; }
+  .sw i {
+    width: 34px; height: 34px; border-radius: 8px; flex: none;
+    border: 1px solid #ffffff1f; display: block;
+  }
+  .sw .n { font-size: 12px; font-weight: 500; }
+  .sw .h { font: 10px/14px var(--font-mono); color: var(--muted-foreground); }
+
+  .alpha-strip { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .alpha-strip div { flex: 1; height: 46px; }
+  .alpha-labels { display: flex; margin-top: 6px; }
+  .alpha-labels span { flex: 1; text-align: center; font: 10px/14px var(--font-mono); color: var(--muted-foreground); }
+  .light-panel { background: #f5f5f7; border-radius: 10px; padding: 12px; display: flex; gap: 8px; align-items: center; }
+  .light-panel .lsw { flex: 1; height: 38px; border-radius: 7px; border: 1px solid #00000014; display: flex; align-items: flex-end; padding: 4px 6px; font: 9px var(--font-mono); color: #1d1d1f; }
+
+  .levels { display: flex; gap: 8px; flex-wrap: wrap; }
+  .lvl { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 7px; background: #ffffff08; font-size: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  .type-row { display: grid; grid-template-columns: 130px 1fr; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--settings-card-border); }
+  .type-row:last-child { border-bottom: 0; }
+  .type-row .m { font: 10px/16px var(--font-mono); color: var(--muted-foreground); }
+
+  .btn {
+    height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid transparent;
+    font: 500 12px/1 var(--font-sans); display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn.default { background: var(--primary); color: #fff; }
+  .btn.outline { background: transparent; border-color: var(--input); color: var(--foreground); }
+  .btn.secondary { background: var(--secondary); color: var(--foreground); }
+  .btn.ghost { background: transparent; color: var(--foreground); }
+  .btn.destructive { background: #ff453a; color: #fff; }
+  .btn.icon { width: 28px; padding: 0; justify-content: center; background: var(--secondary); color: var(--foreground); }
+  .btn.sm { height: 24px; padding: 0 9px; font-size: 11px; }
+  .btn.lg { height: 32px; padding: 0 16px; }
+
+  .tabs { display: inline-flex; gap: 1px; padding: 2px; height: 28px; border-radius: 7px; background: var(--muted); }
+  .tabs span {
+    height: 24px; padding: 0 12px; border-radius: 5px; font-size: 12px;
+    display: inline-flex; align-items: center; color: var(--foreground);
+  }
+  .tabs span.on { background: var(--segment-selected); box-shadow: 0 1px 2px #0002; }
+
+  .switch { width: 34px; height: 20px; border-radius: 999px; background: #ffffff30; padding: 2px; display: inline-flex; }
+  .switch i { width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0004; display: block; }
+  .switch.on { background: #30d158; justify-content: flex-end; }
+
+  .badge {
+    height: 20px; padding: 0 8px; border-radius: 5px; font: 500 10px/1 var(--font-sans);
+    display: inline-flex; align-items: center; background: var(--secondary); color: var(--foreground);
+  }
+  .badge.blue { background: #0a84ff; color: #fff; }
+  .badge.green { background: #32d583; color: #00220f; }
+  .badge.red { background: #ff453a; color: #fff; }
+
+  .field { height: 28px; border-radius: 6px; background: var(--secondary); border: 1px solid transparent; display: flex; align-items: center; padding: 0 9px; font-size: 12px; }
+  .select { height: 27px; min-width: 114px; border-radius: 6px; background: var(--secondary); border: 1px solid var(--input); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 12px; box-shadow: 0 1px 1px #0001; }
+
+  .track { height: 4px; border-radius: 999px; background: var(--muted); position: relative; }
+  .track i { position: absolute; inset: 0 42% 0 0; background: var(--primary); border-radius: 999px; }
+  .track b { position: absolute; left: 58%; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: #f5f5f7; box-shadow: 0 1px 3px #0006; }
+
+  .radius-row { display: flex; gap: 10px; align-items: flex-end; }
+  .radius-row div { width: 62px; height: 46px; background: #ffffff12; border: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: center; font: 9px var(--font-mono); color: var(--muted-foreground); padding-bottom: 3px; }
+
+  .shadow-row { display: flex; gap: 14px; }
+  .shadow-row div { flex: 1; height: 56px; border-radius: 10px; background: var(--popover); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font: 9px var(--font-mono); color: var(--muted-foreground); }
+
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; font-size: 12px; }
+  .kv .k { color: var(--muted-foreground); }
+  .kv .v { font: 11px/16px var(--font-mono); }
+
+  .stats-demo { display: grid; grid-template-columns: repeat(12, 1fr); gap: 10px; }
+  .stats-demo .a { grid-column: span 8; height: 96px; }
+  .stats-demo .b { grid-column: span 4; height: 96px; }
+  .stats-demo .c { grid-column: span 12; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .stats-demo .c div { height: 46px; border-radius: 7px; background: #ffffff0a; border: 1px solid var(--settings-card-border); }
+  .ph { border-radius: 10px; background: #ffffff0a; border: 1px solid var(--settings-card-border); display: flex; align-items: center; justify-content: center; font: 10px var(--font-mono); color: var(--muted-foreground); }
+
+  footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 11px; display: flex; justify-content: space-between; }
+  code { font-family: var(--font-mono); font-size: 11px; color: #c9d1ff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Agent HUD · UI 设计系统</h1>
+      <div class="sub">v0.6.0 · 运行时 CSSOM + 官方源码 v0.6.0 双向核对 · 暗色为默认态</div>
+    </div>
+    <div class="chips">
+      <span class="chip"><b>Tauri 2</b>WebView2</span>
+      <span class="chip"><b>Tailwind v4</b>@theme inline</span>
+      <span class="chip"><b>shadcn</b>new-york</span>
+      <span class="chip"><b>24</b>data-slot</span>
+      <span class="chip"><b>29</b>dark tokens</span>
+    </div>
+  </header>
+
+  <h2><span>语义色</span>shadcn 命名 · 暗色默认 / 亮色可切</h2>
+  <div class="grid cols-4">
+    <div class="sw"><i style="background:#282828"></i><div><div class="n">background</div><div class="h">#282828</div></div></div>
+    <div class="sw"><i style="background:#f5f5f7"></i><div><div class="n">foreground</div><div class="h">#f5f5f7</div></div></div>
+    <div class="sw"><i style="background:#ffffff0d"></i><div><div class="n">card</div><div class="h">#ffffff0d · 5%</div></div></div>
+    <div class="sw"><i style="background:#303030"></i><div><div class="n">popover</div><div class="h">#303030</div></div></div>
+    <div class="sw"><i style="background:#0a84ff"></i><div><div class="n">primary</div><div class="h">#0a84ff</div></div></div>
+    <div class="sw"><i style="background:#ffffff14"></i><div><div class="n">secondary / muted</div><div class="h">#ffffff14 · 8%</div></div></div>
+    <div class="sw"><i style="background:#98989d"></i><div><div class="n">muted-foreground</div><div class="h">#98989d</div></div></div>
+    <div class="sw"><i style="background:#ff453a"></i><div><div class="n">destructive</div><div class="h">#ff453a</div></div></div>
+    <div class="sw"><i style="background:#1f1f1f"></i><div><div class="n">sidebar</div><div class="h">#1f1f1f</div></div></div>
+    <div class="sw"><i style="background:#32d583"></i><div><div class="n">mint</div><div class="h">#32d583</div></div></div>
+    <div class="sw"><i style="background:#000;border-color:#ffffff24"></i><div><div class="n">island-fill</div><div class="h">#000 · outline 14%</div></div></div>
+    <div class="sw"><i style="background:#ffffff3d"></i><div><div class="n">segment-selected</div><div class="h">#ffffff3d · 24%</div></div></div>
+  </div>
+
+  <h2><span>透明度阶梯</span>同一种白 ink 按 alpha 分层，换底不用改组件</h2>
+  <div class="card" style="padding:12px">
+    <div class="alpha-strip">
+      <div style="background:#ffffff0d"></div>
+      <div style="background:#ffffff11"></div>
+      <div style="background:#ffffff14"></div>
+      <div style="background:#ffffff1a"></div>
+      <div style="background:#ffffff1f"></div>
+      <div style="background:#ffffff24"></div>
+      <div style="background:#ffffff30"></div>
+      <div style="background:#ffffff3d"></div>
+      <div style="background:#ffffff55"></div>
+    </div>
+    <div class="alpha-labels">
+      <span>0d 5%</span><span>11 7%</span><span>14 8%</span><span>1a 10%</span><span>1f 12%</span><span>24 14%</span><span>30 19%</span><span>3d 24%</span><span>55 33%</span>
+    </div>
+  </div>
+
+  <h2><span>亮色对照</span>同一语义 token 的第二套取值（系统浅色外观）</h2>
+  <div class="light-panel">
+    <div class="lsw" style="background:#f5f5f7">background</div>
+    <div class="lsw" style="background:#ffffff">card</div>
+    <div class="lsw" style="background:#007aff;color:#fff">primary</div>
+    <div class="lsw" style="background:#0000000a">secondary</div>
+    <div class="lsw" style="background:#e8e8ea">sidebar</div>
+    <div class="lsw" style="background:#30d158">switch on</div>
+    <div class="lsw" style="background:#ff3b30;color:#fff">critical</div>
+  </div>
+
+  <h2><span>HUD 状态色</span>等级 / 告警 / Agent 调色板</h2>
+  <div class="grid cols-3">
+    <div class="card">
+      <div class="levels">
+        <span class="lvl"><i class="dot" style="background:#3ddc84"></i>ok #3ddc84</span>
+        <span class="lvl"><i class="dot" style="background:#ffd23f"></i>warning #ffd23f</span>
+        <span class="lvl"><i class="dot" style="background:#ff453a"></i>critical #ff453a</span>
+      </div>
+      <div class="kv" style="margin-top:10px">
+        <span class="k">亮色 text</span><span class="v">#1e7e34 / #946300 / #d70015</span>
+        <span class="k">透底 text</span><span class="v">#9df0c0 / #ffe08a / #ffa39b</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="levels">
+        <span class="lvl"><i class="dot" style="background:#82aaff"></i>turn</span>
+        <span class="lvl"><i class="dot" style="background:#6cd8ac"></i>calm</span>
+        <span class="lvl"><i class="dot" style="background:#e9a16d"></i>warning</span>
+      </div>
+      <div class="kv" style="margin-top:10px">
+        <span class="k">暗色 fill</span><span class="v">#82aaff / #6cd8ac / #e9a16d</span>
+        <span class="k">亮色 fill</span><span class="v">#2f62d0 / #0f7b57 / #a8521c</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="levels" style="gap:6px">
+        <i class="dot" style="background:#c084fc;width:16px;height:16px"></i>
+        <i class="dot" style="background:#60a5fa;width:16px;height:16px"></i>
+        <i class="dot" style="background:#2dd4bf;width:16px;height:16px"></i>
+        <i class="dot" style="background:#fb923c;width:16px;height:16px"></i>
+        <i class="dot" style="background:#f472b6;width:16px;height:16px"></i>
+        <i class="dot" style="background:#a3e635;width:16px;height:16px"></i>
+      </div>
+      <div class="kv" style="margin-top:10px">
+        <span class="k">Agent 暗色（循环）</span><span class="v">6 hues</span>
+        <span class="k">权限 Allow</span><span class="v">#3ddc84 + 黑字</span>
+      </div>
+    </div>
+  </div>
+
+  <h2><span>字体层级</span>Segoe UI / SF Pro Text · 无 Web Font · 数字等宽</h2>
+  <div class="card">
+    <div class="type-row"><div class="m">20 / 600 / 26</div><div style="font-size:20px;line-height:26px;font-weight:600">页面标题 Page title</div></div>
+    <div class="type-row"><div class="m">16 / 600 / 24</div><div style="font-size:16px;line-height:24px;font-weight:600">区块标题 Section heading</div></div>
+    <div class="type-row"><div class="m">13 / 400 / 18</div><div style="font-size:13px;line-height:18px">正文与主体内容，全局基准字号 13px，行高 18px</div></div>
+    <div class="type-row"><div class="m">12 / 500 / 16.5</div><div style="font-size:12px;line-height:16.5px;font-weight:500">控件文字 · Button / Input / Select</div></div>
+    <div class="type-row"><div class="m">11 / 400 / 15</div><div style="font-size:11px;line-height:15px;color:#98989d">密集信息 · 账号行 / 脚注 / notice</div></div>
+    <div class="type-row"><div class="m">13 / 400 / 18 · tabular</div><div style="font-size:13px;font-variant-numeric:tabular-nums">2.0B Token · 47M · $4.64+ · 77M</div></div>
+  </div>
+
+  <h2><span>控件</span>28px 标尺 · 圆角 5–7 · 无重阴影</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn default">Primary</button>
+        <button class="btn secondary">Secondary</button>
+        <button class="btn outline">Outline</button>
+        <button class="btn ghost">Ghost</button>
+        <button class="btn destructive">Delete</button>
+        <button class="btn icon">＋</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+        <button class="btn sm secondary">Small 24</button>
+        <button class="btn secondary">Default 28</button>
+        <button class="btn lg secondary">Large 32</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+        <span class="badge">badge</span>
+        <span class="badge blue">primary</span>
+        <span class="badge green">ok</span>
+        <span class="badge red">critical</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="tabs"><span class="on">Usage</span><span>Sessions</span><span>Agents</span></div>
+        <div class="select"><span>Last 7 days</span><span style="color:#98989d">⌄</span></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+        <div class="field" style="flex:1">Search sessions…</div>
+        <span class="switch"><i></i></span>
+        <span class="switch on"><i></i></span>
+      </div>
+      <div class="track" style="margin-top:16px"><i></i><b></b></div>
+      <div style="font:10px var(--font-mono);color:#98989d;margin-top:8px">slider · track 4px / thumb 13px</div>
+    </div>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:10px">
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">Card · 12px 圆角 · 1px 描边</div>
+      <div style="font-size:12px;color:#98989d;line-height:18px">卡片靠透明度叠色与 1px 边建立层级，<code>box-shadow: none</code>。内容左右内边距 14px。</div>
+      <div style="display:flex;gap:6px;margin-top:10px"><span class="badge">quota</span><span class="badge">7d</span></div>
+    </div>
+    <div class="card" style="border-radius:10px;padding:14px;background:#ffffff0a">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <i class="dot" style="background:#e9a16d;margin-top:5px"></i>
+        <div>
+          <div style="font-size:12px;font-weight:500">Alert · 10px 圆角 · 14px 内边距</div>
+          <div style="font-size:12px;line-height:1.5;color:#98989d;margin-top:2px">描述行高 1.5，上下外边距 14px。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span>圆角与阴影</span>层级靠叠色，不靠投影</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="radius-row">
+        <div style="border-radius:5px">5</div>
+        <div style="border-radius:6px">6</div>
+        <div style="border-radius:7px">7</div>
+        <div style="border-radius:8px">8</div>
+        <div style="border-radius:10px">10</div>
+        <div style="border-radius:12px">12</div>
+      </div>
+      <div class="kv" style="margin-top:12px">
+        <span class="k">badge / tab / chip</span><span class="v">5px</span>
+        <span class="k">button / input / select</span><span class="v">6px</span>
+        <span class="k">card / panel</span><span class="v">12px</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="shadow-row">
+        <div style="box-shadow:0 1px 2px #0002">tab</div>
+        <div style="box-shadow:0 1px 3px #0006">thumb</div>
+        <div style="box-shadow:0 8px 28px #0003">popover</div>
+      </div>
+      <div class="kv" style="margin-top:12px">
+        <span class="k">popover / dropdown / tooltip</span><span class="v">0 8px 28px #0003</span>
+        <span class="k">card / button</span><span class="v">none</span>
+      </div>
+    </div>
+  </div>
+
+  <h2><span>布局范式</span>12 列 + 容器查询（1040 / 1000 / 600）</h2>
+  <div class="stats-demo">
+    <div class="ph a">trend · span 8</div>
+    <div class="ph b">agents · span 4</div>
+    <div class="c"><div></div><div></div><div></div><div></div><div></div></div>
+  </div>
+
+  <h2><span>动效与 HUD 光晕</span>入场 360ms · 洗刷 900ms · reduced-motion 归零</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="kv">
+        <span class="k">主入场缓动</span><span class="v">cubic-bezier(.2,.7,.2,1)</span>
+        <span class="k">数据洗刷缓动</span><span class="v">cubic-bezier(.12,.6,.3,1)</span>
+        <span class="k">hover 展开 / 收起</span><span class="v">400ms / 200ms</span>
+        <span class="k">消息淡出</span><span class="v">5s</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="kv">
+        <span class="k">glow effect</span><span class="v">breathe · 3s（idle 7s）</span>
+        <span class="k">range / blur</span><span class="v">14 / 8</span>
+        <span class="k">brightness / amplitude</span><span class="v">0.9 / 0.6</span>
+        <span class="k">simple ring</span><span class="v">22px · 1.5px</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>来源：agenthud.app / github.com/jazzenchen/agent-hud-open @ v0.6.0（Apache-2.0）</span>
+    <span>提取方式：WebView2 CDP CSSOM + 源码交叉校验</span>
+  </footer>
+</div>
+</body>
+</html>

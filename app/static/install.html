@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#07080B" />
+<link rel="stylesheet" href="/tokens.css" />
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('gw_theme');
+      document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark';
+    } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+  })();
+</script>
+<title>OCS 脚本安装 · 本地网关</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13.5px/1.6 var(--font-body); }
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .35;
+    background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 32px 32px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 24px 60px; position: relative; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 36px; height: 36px; border-radius: 9px; background: var(--accent); color: var(--accent-ink);
+    font: 700 13px var(--mono); display: grid; place-items: center; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
+  .sub { color: var(--faint); font: 10px var(--mono); letter-spacing: 2px; }
+  .top-links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .top-links a { color: var(--muted); text-decoration: none; border: 1px solid var(--line-strong);
+    border-radius: 7px; padding: 6px 10px; font: 11px var(--mono); }
+  .top-links a:hover { color: var(--accent); border-color: var(--accent); }
+  .note { border: 1px solid var(--line); background: rgba(198,242,78,.04); border-radius: 10px;
+    padding: 12px 14px; color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+  .note b { color: var(--accent); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; margin-bottom: 14px; position: relative; }
+  .card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .card h2 { margin: 0; font-size: 16px; }
+  .ver { font: 11px var(--mono); color: var(--warn); }
+  .badge { font: 10px var(--mono); border-radius: 5px; padding: 1px 7px; border: 1px solid var(--line-strong); color: var(--muted); }
+  .badge.ok { color: var(--ok); border-color: rgba(91,228,155,.4); background: rgba(91,228,155,.06); }
+  .badge.wait { color: var(--warn); border-color: rgba(245,181,68,.4); background: rgba(245,181,68,.06); }
+  .desc { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .row label { width: 84px; color: var(--faint); font: 10px var(--mono); flex: none; }
+  input { flex: 1; min-width: 0; background: var(--bg-elev); border: 1px solid var(--line); color: var(--text);
+    border-radius: 7px; padding: 8px 10px; font: 11.5px var(--mono); }
+  button { background: var(--panel-2); border: 1px solid var(--line-strong); color: var(--text);
+    border-radius: 7px; padding: 8px 12px; cursor: pointer; font: 11px var(--mono); flex: none; }
+  button:hover, .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn { background: var(--panel-2); border: 1px solid var(--line-strong); color: var(--text); border-radius: 7px;
+    padding: 8px 12px; font: 11px var(--mono); flex: none; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  .hint { color: var(--faint); font-size: 11px; margin-top: 8px; }
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 16px;
+    font-size: 12px; opacity: 0; transition: .2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+
+  .top-links .theme-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; padding: 0; flex: none;
+    background: transparent; border: 1px solid var(--line-strong);
+    border-radius: 7px; color: var(--muted); cursor: pointer;
+  }
+  .top-links .theme-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---------- 窄屏：URL 行改为三行，按钮不裁切 ---------- */
+  @media (max-width: 720px) {
+    .wrap { padding: 24px 14px 48px; }
+    header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    h1 { font-size: 19px; }
+    .card { padding: 14px; }
+    .row { flex-wrap: wrap; gap: 6px; }
+    .row label { width: 100%; }
+    .row input { flex: 1 1 100%; }
+    input { font-size: 10.5px; }
+    .row button, .row .btn { flex: 1 1 auto; min-width: 68px; justify-content: center; text-align: center; }
+  }
+  @media (max-width: 420px) {
+    .top-links { gap: 6px; }
+    .top-links a { padding: 5px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">OCS</div>
+      <div>
+        <h1>脚本安装</h1>
+        <div class="sub">LOCAL GATEWAY · USERSCRIPT</div>
+      </div>
+    </div>
+    <div class="top-links">
+      <button id="btnTheme" class="theme-btn" type="button" aria-label="切换明暗外观" title="切换明暗外观">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.6 9.4A5.8 5.8 0 0 1 6.6 2.4a5.8 5.8 0 1 0 7 7Z"/></svg>
+      </button>
+      <a href="/admin">管理台</a>
+      <a href="/health">健康检查</a>
+      <a href="/api/tools/versions">版本接口</a>
+    </div>
+  </header>
+
+  <div class="note">
+    安装后会自动检查更新（<b>@updateURL</b> 指向本机）。如果是旧版本、卡片里没有更新源，先手动装一次新版即可。
+    全部地址在同一个端口；端口改了把地址里的 <b>8000</b> 换掉即可。
+    <div style="margin-top:8px">
+      想要<b>本地脚本</b>：<a href="/install/bundle.zip?local=1" style="color:var(--accent)">打包下载（脱网关版）</a>
+      · <a href="/install/bundle.zip" style="color:var(--muted)">打包下载（带自动更新）</a>
+      · 单个下载见每张卡片的「下载本地」
+    </div>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="note" style="margin-top:18px">
+    本地脚本（例如「超星学习通课程资源直链下载」）没有更新源，不会自动更新；请按需自行管理。
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const VERSIONS = __VERSIONS__;
+const SCRIPTS = [
+  {
+    file: 'ocs-progress.user.js',
+    name: 'OCS 学习进度上报（只读）',
+    desc: '上报课程进度、当前章/节、整门课任务明细（视频/文档/测验/讨论）、课程截止日期；不点击、不提交。',
+  },
+  {
+    file: 'chaoxing-probe.user.js',
+    name: 'OCS 进度探针（只读诊断）',
+    desc: '扫描学习通 / 中国大学MOOC 的账号、课程、章节、任务节点与接口，用于校准选择器。',
+  },
+  {
+    file: 'mooc-result-probe.user.js',
+    name: 'MOOC 结果探针',
+    desc: '只读抓取已提交测验的结果与官方答案，回传网关；批量回捞测验列表的整卷答案。',
+  },
+];
+
+const $ = (id) => document.getElementById(id);
+function toast(text) {
+  const el = $('toast');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 1600);
+}
+function cmpVersion(a, b) {
+  const pa = String(a || '0').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || '0').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+}
+async function copy(text, label) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('已复制：' + label);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+    toast('已复制：' + label);
+  }
+}
+function statusBadge(served, reported) {
+  if (!reported) return '<span class="badge">未检测到已安装版本</span>';
+  return cmpVersion(served, reported) > 0
+    ? `<span class="badge wait">待更新 ${reported} → ${served}</span>`
+    : `<span class="badge ok">已是最新 ${reported}</span>`;
+}
+function render() {
+  const served = VERSIONS.served || {};
+  const reported = VERSIONS.reported || {};
+  const origin = location.origin;
+  $('list').innerHTML = SCRIPTS.map((s) => {
+    const base = origin + '/tools/' + s.file.replace('.user.js', '');
+    const install = origin + '/tools/' + s.file;
+    const ver = served[s.file] || '?';
+    const rep = reported[s.file.replace('.user.js', '')] || '';
+    return `<div class="card">
+      <div class="card-head">
+        <h2>${s.name}</h2>
+        <span class="ver">v${ver}</span>
+        ${statusBadge(ver, rep)}
+      </div>
+      <div class="desc">${s.desc}</div>
+      <div class="row"><label>安装</label><input value="${install}" readonly /><button class="primary" data-copy="${install}" data-label="${s.name}">复制</button><button data-open="${install}">打开</button></div>
+      <div class="row"><label>更新源</label><input value="${base}.meta.js" readonly /><button data-copy="${base}.meta.js" data-label="更新源">复制</button></div>
+      <div class="row"><label>本地脚本</label><input value="${install}?local=1" readonly /><button data-copy="${install}?local=1" data-label="本地脚本地址">复制</button><a class="btn" href="${install}?local=1" download style="text-decoration:none">下载</a></div>
+      <div class="hint">本地脚本 = 去掉 @updateURL 的版本，不会自动更新；想保留自动更新就用上面的安装地址。</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('[data-copy]').forEach((btn) => {
+    btn.onclick = () => copy(btn.dataset.copy, btn.dataset.label);
+  });
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.onclick = () => window.open(btn.dataset.open, '_blank');
+  });
+}
+render();
+
+document.getElementById('btnTheme').addEventListener('click', function () {
+  var next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('gw_theme', next); } catch (e) {}
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', next === 'light' ? '#F2F1EA' : '#07080B');
+});
+</script>
+</body>
+</html>

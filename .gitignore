@@ -1,0 +1,47 @@
+# Python 运行环境（uv 自动生成，不要提交）
+.venv/
+__pycache__/
+*.pyc
+
+# 本地配置与数据（含 API Key / 账号进度，绝对不能提交）
+.env
+# data/ 下全部是运行时数据，只保留占位文件
+data/*
+!data/.gitkeep
+data/*.broken
+data/*.tmp
+
+# 根目录一次性调试 / 评审产物
+/qoder_review.json
+/qoder_mismatches.json
+/my_answers.json
+/progress_check.json
+/rules.json
+/subjects.json
+/compare_review.py
+/dump_review.py
+/wait_cal.py
+/run_calibration.py
+
+# 工具调试残留
+/tools/uia.txt
+/tools/uia_dump.ps1
+
+# WebSculpt 本地状态
+.websculpt/
+
+# 便携版 uv 可执行文件（31MB 二进制，请单独下载，不要放进仓库）
+uv.exe
+uvx.exe
+uvw.exe
+
+# 系统与日志杂项
+.DS_Store
+Thumbs.db
+*.log
+
+# 本地 AI 工具状态（换机器就失效，不进仓库）
+.claude/
+.engram/
+.pytest_cache/
+/untitled.md

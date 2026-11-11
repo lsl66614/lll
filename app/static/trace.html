@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>答题链路 · OCS AI 网关</title>
+<meta name="theme-color" content="#07080B" />
+<link rel="stylesheet" href="/tokens.css" />
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('gw_theme');
+      document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark';
+    } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+  })();
+</script>
+<style>
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(900px 520px at 8% -12%, rgba(216, 255, 62, .045), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, .013) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .013) 1px, transparent 1px);
+  background-size: auto, 52px 52px, 52px 52px;
+  color: var(--text);
+  font: 13px/1.55 var(--sans);
+  display: flex; flex-direction: column; min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: var(--mono); }
+::selection { background: var(--acid); color: var(--accent-ink); }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--line-soft); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------------------------------------------------------------- header */
+header {
+  display: flex; align-items: center; gap: 22px;
+  height: 62px; padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 11px; min-width: 172px; }
+.brand::before {
+  content: ""; width: 7px; height: 22px; background: var(--acid); flex: none;
+}
+.brand h1 {
+  font-size: 14px; margin: 0; font-weight: 600; letter-spacing: .16em;
+  line-height: 1.15;
+}
+.brand span {
+  display: block; color: var(--dim); font: 9px/1.4 var(--mono);
+  letter-spacing: .12em; text-transform: uppercase; margin-top: 2px;
+}
+.live {
+  display: flex; align-items: center; gap: 7px; color: var(--muted);
+  font: 10px/1 var(--mono); letter-spacing: .08em; white-space: nowrap;
+  padding-left: 18px; border-left: 1px solid var(--line);
+}
+.live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); flex: none; }
+.live.on .dot { background: var(--acid); box-shadow: 0 0 0 3px rgba(216, 255, 62, .09); animation: pulse 2.2s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.metrics {
+  display: flex; align-items: stretch; flex: 1; overflow-x: auto; scrollbar-width: none;
+  height: 100%;
+}
+.metrics::-webkit-scrollbar { display: none; }
+.metric {
+  display: flex; flex-direction: column; justify-content: center;
+  min-width: 82px; padding: 0 16px; border-left: 1px solid var(--line-soft);
+}
+.metric:first-child { border-left: 0; }
+.metric b {
+  display: block; font: 500 17px/1.15 var(--mono); font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.metric span {
+  color: var(--dim); font: 8.5px/1.4 var(--mono); letter-spacing: .14em;
+  text-transform: uppercase; margin-top: 3px; white-space: nowrap;
+}
+.metric b.ok { color: var(--green); }
+.metric b.warn { color: var(--amber); }
+.actions { display: flex; gap: 6px; }
+.actions #themeBtn {
+  width: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+button, select, input {
+  font: inherit; color: var(--text); background: transparent;
+  border: 1px solid var(--line); border-radius: 2px; outline: none;
+}
+button {
+  padding: 6px 11px; font: 10px/1.4 var(--mono); letter-spacing: .08em;
+  cursor: pointer; text-transform: uppercase;
+  transition: border-color .14s, color .14s, background .14s;
+}
+button:hover { border-color: var(--muted); }
+button.active { border-color: var(--acid); color: var(--acid); background: rgba(216, 255, 62, .05); }
+button.ghost { border-color: transparent; color: var(--muted); }
+button.ghost:hover { color: var(--text); }
+
+/* ---------------------------------------------------------------- layout */
+main {
+  flex: 1; display: grid; grid-template-columns: 296px minmax(0, 1fr) 306px;
+  min-height: 0;
+}
+aside { min-height: 0; overflow-y: auto; }
+aside.left { border-right: 1px solid var(--line); background: var(--bg-soft); padding: 14px 12px 32px; }
+aside.right { border-left: 1px solid var(--line); background: var(--bg-soft); padding: 18px 18px 40px; }
+aside.right:empty::before {
+  content: "NO TRACE SELECTED"; display: block; margin-top: 48px;
+  color: var(--dim); font: 9px/1.6 var(--mono); letter-spacing: .18em;
+  text-align: center; opacity: .7;
+}
+section.view { min-height: 0; overflow-y: auto; padding: 20px 26px 56px; }
+
+.side-title {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 0 2px 10px; border-bottom: 1px solid var(--line); margin-bottom: 11px;
+}
+.side-title span { font: 9px/1 var(--mono); letter-spacing: .18em; color: var(--dim); text-transform: uppercase; }
+.side-title small { font: 9px/1 var(--mono); color: var(--dim); letter-spacing: .06em; }
+
+.filters { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
+.filters input {
+  width: 100%; padding: 7px 2px; font-size: 12px; border: 0;
+  border-bottom: 1px solid var(--line); border-radius: 0; background: transparent;
+}
+.filters input::placeholder { color: var(--dim); }
+.filters input:focus { border-bottom-color: var(--acid); }
+.filter-row { display: flex; gap: 6px; }
+.filter-row select {
+  flex: 1; padding: 4px 2px; font: 10px/1.4 var(--mono); border: 0;
+  border-bottom: 1px solid var(--line); border-radius: 0; color: var(--muted);
+  cursor: pointer;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.chip {
+  padding: 2px 0; color: var(--dim); font: 10px/1.6 var(--mono);
+  letter-spacing: .04em; cursor: pointer; border-bottom: 1px solid transparent;
+  user-select: none; transition: color .12s, border-color .12s;
+}
+.chip:hover { color: var(--muted); }
+.chip.on { color: var(--acid); border-bottom-color: var(--acid); }
+
+.item {
+  position: relative; padding: 9px 8px 9px 11px; cursor: pointer;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background .12s;
+}
+.item::before {
+  content: ""; position: absolute; left: 0; top: 9px; bottom: 9px;
+  width: 2px; background: transparent;
+}
+.item:hover { background: rgba(255, 255, 255, .022); }
+.item.sel { background: rgba(216, 255, 62, .035); }
+.item.sel::before { background: var(--acid); }
+.item .l1 { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+.item .seq { color: var(--dim); font: 9px/1 var(--mono); flex: none; }
+.item .title {
+  font-size: 11.8px; color: var(--text); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; flex: 1; letter-spacing: .005em;
+}
+.item.sel .title { color: var(--text); }
+.item .l2 { display: flex; align-items: center; gap: 7px; color: var(--dim); font: 9.5px/1.5 var(--mono); }
+.item .l2 .sep { opacity: .35; }
+.item .l2 .ms { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 9px/1.5 var(--mono); letter-spacing: .05em; color: var(--dim);
+  text-transform: uppercase; white-space: nowrap;
+}
+.badge::before { content: ""; width: 4px; height: 4px; background: currentColor; flex: none; }
+.badge.ok { color: var(--green); }
+.badge.warn { color: var(--amber); }
+.badge.err { color: var(--red); }
+.badge.run { color: var(--acid); }
+.badge.mute { color: var(--dim); }
+
+.dot-status { width: 5px; height: 5px; border-radius: 50%; flex: none; background: var(--dim); }
+.dot-status.ok { background: var(--green); }
+.dot-status.err { background: var(--red); }
+.dot-status.run { background: var(--acid); animation: pulse 1.2s infinite; }
+.dot-status.warn { background: var(--amber); }
+
+/* ---------------------------------------------------------------- sections */
+.card {
+  border: 0; border-top: 1px solid var(--line); border-radius: 0;
+  background: transparent; padding: 16px 0 4px; margin-bottom: 26px;
+}
+.card h3 {
+  margin: 0 0 14px; font: 9px/1 var(--mono); letter-spacing: .2em;
+  color: var(--dim); text-transform: uppercase; font-weight: 400;
+  display: flex; align-items: center; gap: 9px;
+}
+.card h3::before { content: ""; width: 14px; height: 1px; background: var(--acid); flex: none; }
+.card h3 .hint {
+  color: var(--dim); font: 9px/1.4 var(--mono); letter-spacing: .02em;
+  text-transform: none; margin-left: auto; opacity: .75;
+}
+
+.qhead { border-top-color: var(--line); }
+.qhead .tags { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; }
+.qhead .qtitle {
+  font-size: 16px; line-height: 1.75; letter-spacing: .005em;
+  word-break: break-word; max-height: 124px; overflow-y: auto; max-width: 940px;
+}
+.qhead .opts { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.opt {
+  font-size: 11.5px; color: var(--muted); max-width: 340px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--mono); letter-spacing: .01em;
+}
+.opt::first-letter { color: var(--acid); }
+
+/* ---------------------------------------------------------------- waterfall */
+.wf { width: 100%; }
+.wf-axis { display: grid; grid-template-columns: 158px 1fr; gap: 10px; margin-bottom: 4px; }
+.wf-ticks { position: relative; height: 16px; border-bottom: 1px solid var(--line); }
+.wf-ticks span {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font: 8.5px/1 var(--mono); color: var(--dim); white-space: nowrap;
+  letter-spacing: .02em;
+}
+.wf-ticks span:first-child { transform: none; }
+.wf-ticks span:last-child { transform: translateX(-100%); }
+.wf-row {
+  display: grid; grid-template-columns: 158px 1fr; gap: 10px;
+  align-items: center; min-height: 26px;
+}
+.wf-row:hover { background: rgba(255, 255, 255, .018); }
+.wf-label {
+  font: 9.5px/1.4 var(--mono); color: var(--muted); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; padding-right: 4px;
+}
+.wf-label small { color: var(--dim); font-size: 9px; }
+.wf-track {
+  position: relative; height: 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+}
+.wf-bar {
+  position: absolute; top: 4px; height: 9px; border-radius: 1px;
+  background: var(--line-strong); min-width: 2px; cursor: pointer;
+  transition: filter .12s, box-shadow .12s;
+}
+.wf-bar:hover { filter: brightness(1.45); box-shadow: 0 0 0 1px rgba(255, 255, 255, .3); }
+.wf-bar.ok { background: rgba(123, 216, 143, .72); }
+.wf-bar.run { background: rgba(216, 255, 62, .8); }
+.wf-bar.err { background: rgba(255, 107, 107, .78); }
+.wf-bar.warn { background: rgba(232, 197, 71, .72); }
+.wf-bar.mute { background: var(--line-strong); }
+.wf-bar span {
+  position: absolute; left: 5px; top: 0; line-height: 9px;
+  font: 8px/9px var(--mono); color: rgba(0, 0, 0, .78); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 10px);
+  pointer-events: none; letter-spacing: .02em;
+}
+.wf-bar.mute span { color: var(--dim); }
+.wf-grid {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: rgba(255, 255, 255, .028); pointer-events: none;
+}
+.wf-legend {
+  display: flex; gap: 16px; margin-top: 12px; color: var(--dim);
+  font: 8.5px/1 var(--mono); letter-spacing: .06em; flex-wrap: wrap;
+  text-transform: uppercase;
+}
+.wf-legend i { display: inline-block; width: 7px; height: 7px; margin-right: 5px; vertical-align: -1px; }
+
+/* ---------------------------------------------------------------- models */
+.models { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 26px; }
+.model {
+  border-bottom: 1px solid var(--line-soft); padding: 11px 0 12px;
+  cursor: pointer; position: relative; transition: background .12s;
+}
+.model:hover { background: rgba(255, 255, 255, .018); }
+.model .m1 { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.model .m1 .name {
+  font: 10px/1.4 var(--mono); color: var(--muted); flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  letter-spacing: .01em;
+}
+.model .m1 .pn {
+  color: var(--dim); font: 8px/1 var(--mono); border: 1px solid var(--line);
+  padding: 2px 3px; letter-spacing: .04em;
+}
+.model .m2 { display: flex; align-items: baseline; gap: 10px; }
+.model .ans {
+  font: 600 24px/1.1 var(--mono); letter-spacing: -.01em;
+  word-break: break-all; color: var(--text);
+}
+.model .ans.pending { color: var(--dim); font-size: 12px; font-weight: 400; }
+.model .side {
+  color: var(--dim); font: 9px/1.5 var(--mono); margin-left: auto;
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.model .m3 {
+  display: flex; gap: 12px; margin-top: 6px; color: var(--dim);
+  font: 8.5px/1.4 var(--mono); flex-wrap: wrap; letter-spacing: .02em;
+}
+.model .err { margin-top: 5px; color: var(--red); font: 9.5px/1.5 var(--mono); word-break: break-word; }
+.model.ok .ans { color: var(--green); }
+.model.run .ans { color: var(--amber); }
+.model.err .ans { color: var(--red); }
+.model.warn .ans { color: var(--amber); font-size: 15px; }
+.bar-mini { height: 2px; background: rgba(255, 255, 255, .05); margin-top: 9px; overflow: hidden; }
+.bar-mini i { display: block; height: 100%; background: var(--muted); }
+.model.ok .bar-mini i { background: var(--green); }
+.model.err .bar-mini i { background: var(--red); }
+.model.warn .bar-mini i { background: var(--amber); }
+.model.run .bar-mini i { background: var(--acid); }
+
+/* ---------------------------------------------------------------- right rail */
+.answer {
+  font: 600 52px/1.05 var(--mono); letter-spacing: -.02em;
+  word-break: break-all; margin: 4px 0 6px; color: var(--text);
+}
+.answer.ai { color: var(--acid); }
+.answer.err { color: var(--red); font-size: 28px; }
+.answer-sub {
+  color: var(--dim); font: 9px/1.4 var(--mono); letter-spacing: .12em;
+  text-transform: uppercase; margin-bottom: 14px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.kv {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 6px 0; border-bottom: 1px dotted color-mix(in srgb, var(--line) 80%, transparent);
+  font: 10px/1.5 var(--mono);
+}
+.kv:last-child { border-bottom: 0; }
+.kv .k { color: var(--dim); flex: none; letter-spacing: .04em; }
+.kv .v {
+  color: var(--text); text-align: right; word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+.risk {
+  margin-top: 12px; padding: 9px 10px; border-left: 2px solid var(--line);
+  font: 10px/1.6 var(--mono); color: var(--muted); background: rgba(255, 255, 255, .02);
+}
+.risk.ok { border-left-color: var(--green); color: var(--green); }
+.risk.warn { border-left-color: var(--amber); color: var(--amber); }
+.risk.err { border-left-color: var(--red); color: var(--red); }
+aside.right .card { margin-bottom: 22px; }
+aside.right .card h3::before { background: var(--line-strong); }
+
+.votes { display: flex; flex-direction: column; gap: 7px; }
+.vote-row { display: flex; align-items: center; gap: 8px; font: 9.5px/1.4 var(--mono); }
+.vote-row .lab {
+  width: 54px; color: var(--muted); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.vote-row .bar { flex: 1; height: 3px; background: var(--panel-2); overflow: hidden; }
+.vote-row .bar i { display: block; height: 100%; background: var(--acid); }
+.vote-row .num {
+  width: 22px; text-align: right; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.vote-note {
+  color: var(--dim); font: 9px/1.6 var(--mono); margin-top: 9px;
+  letter-spacing: .03em;
+}
+
+/* ---------------------------------------------------------------- timeline */
+.tl {
+  display: grid; grid-template-columns: 64px 96px 1fr; gap: 10px;
+  font: 9.5px/1.6 var(--mono); padding: 4px 0;
+  border-bottom: 1px dotted color-mix(in srgb, var(--line) 65%, transparent);
+}
+.tl:last-child { border-bottom: 0; }
+.tl .t { color: var(--dim); font-variant-numeric: tabular-nums; }
+.tl .n { color: var(--dim); letter-spacing: .06em; text-transform: uppercase; }
+.tl .d { color: var(--muted); word-break: break-word; }
+.tl.ok .d { color: var(--green); }
+.tl.err .d { color: var(--red); }
+
+/* ---------------------------------------------------------------- drawer */
+.drawer-mask {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, .56);
+  opacity: 0; pointer-events: none; transition: opacity .16s; z-index: 40;
+}
+.drawer-mask.on { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; right: 0; top: 0; bottom: 0; width: min(470px, 92vw);
+  background: var(--bg-soft); border-left: 1px solid var(--line); z-index: 41;
+  transform: translateX(100%); transition: transform .18s ease;
+  display: flex; flex-direction: column;
+}
+.drawer.on { transform: none; }
+.drawer-head {
+  display: flex; align-items: center; gap: 12px; padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.drawer-head b { font: 11px/1.4 var(--mono); letter-spacing: .06em; flex: 1; }
+.drawer-body { padding: 16px 18px; overflow-y: auto; font-size: 11.5px; }
+.drawer-body .kv { font-size: 10px; }
+.drawer-body pre {
+  margin: 12px 0 0; padding: 12px; background: var(--bg-elev);
+  border: 1px solid var(--line); border-radius: 2px; color: var(--muted);
+  font: 9.5px/1.7 var(--mono); overflow-x: auto;
+  white-space: pre-wrap; word-break: break-word;
+}
+
+.empty {
+  height: 100%; min-height: 480px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; color: var(--dim);
+  gap: 14px; text-align: center; padding: 24px;
+}
+.empty::before { content: ""; width: 44px; height: 1px; background: var(--acid); }
+.empty .big {
+  font: 300 17px/1 var(--mono); color: var(--muted);
+  letter-spacing: .3em; display: inline-flex; align-items: center;
+}
+.empty .big .caret {
+  color: var(--acid); letter-spacing: 0; margin-left: 2px;
+  animation: blink 1.15s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.empty p { margin: 0; max-width: 430px; line-height: 1.9; font-size: 11.5px; color: var(--dim); }
+.foot {
+  color: var(--dim); font: 9px/1.4 var(--mono); text-align: right;
+  margin-top: 8px; letter-spacing: .04em; opacity: .8;
+}
+
+#detail > * { animation: rise .32s cubic-bezier(.2, .7, .3, 1) both; }
+#detail > *:nth-child(2) { animation-delay: .04s; }
+#detail > *:nth-child(3) { animation-delay: .08s; }
+#detail > *:nth-child(4) { animation-delay: .12s; }
+#detail > *:nth-child(5) { animation-delay: .16s; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------------------------------------------------------------- solve */
+.solve { padding-top: 14px; }
+.solve .qfull {
+  font-size: 15.5px; line-height: 1.8; color: var(--text);
+  word-break: break-word; white-space: pre-wrap; max-width: 78ch;
+}
+.solve .opts-full {
+  margin-top: 14px; display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 20px;
+}
+.solve .opt-line {
+  font: 11.5px/1.65 var(--mono); color: var(--muted);
+  padding: 5px 0 5px 10px; border-left: 1px solid var(--line);
+  white-space: normal; word-break: break-word; overflow-wrap: anywhere;
+}
+.solve .opt-line b { color: var(--acid); font-weight: 500; margin-right: 6px; }
+.recv { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 14px; }
+.recv-lab {
+  font: 9px/1 var(--mono); letter-spacing: .16em; color: var(--dim);
+  text-transform: uppercase; margin-right: 4px;
+}
+.flag {
+  font: 9.5px/1 var(--mono); letter-spacing: .04em; padding: 4px 7px;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.flag.ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 34%, transparent); }
+.flag.warn { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.flag.mute { color: var(--dim); }
+.recv-alert {
+  margin: -4px 0 14px; padding: 8px 11px;
+  border-left: 2px solid var(--amber); background: rgba(232, 197, 71, .06);
+  color: var(--amber); font: 10px/1.7 var(--mono); letter-spacing: .02em;
+}
+.steps { margin-top: 22px; }
+.imgbox { margin-top: 16px; }
+.imgbox-h {
+  font: 9px/1 var(--mono); letter-spacing: .14em; color: var(--dim);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.imgbox-none { color: var(--dim); font: 10px/1.7 var(--mono); }
+.step { border-top: 1px solid var(--line); padding: 14px 0 16px; }
+.step-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
+.step-head .sname { font: 10.5px/1.4 var(--mono); letter-spacing: .04em; color: var(--text); }
+.step-head .smeta { font: 9px/1.4 var(--mono); color: var(--dim); letter-spacing: .03em; }
+.step-head .sans { margin-left: auto; font: 11px/1.4 var(--mono); color: var(--green); letter-spacing: .06em; }
+.step-head .sans b { font-size: 15px; font-weight: 600; }
+.step-head .sans.pending { color: var(--dim); }
+.step-head .sans.bad { color: var(--red); }
+.reason {
+  margin: 0; padding: 11px 13px; background: var(--panel-2);
+  border-left: 2px solid color-mix(in srgb, var(--acid) 55%, transparent);
+  color: var(--muted); font: 11px/1.85 var(--sans);
+  white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+  max-height: 320px; overflow-y: auto;
+}
+.reason.none { color: var(--dim); border-left-color: var(--line); }
+.final {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line);
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.final .lab {
+  font: 9px/1 var(--mono); letter-spacing: .18em; color: var(--dim);
+  text-transform: uppercase;
+}
+.final .val { font: 26px/1 var(--mono); color: var(--acid); letter-spacing: .04em; }
+.final .val.long { font: 15px/1.65 var(--sans); letter-spacing: .01em; }
+.final .src { font: 9.5px/1.4 var(--mono); color: var(--dim); }
+.deep { border-top: 1px solid var(--line); margin-top: 6px; }
+.deep > summary {
+  cursor: pointer; list-style: none; padding: 12px 0; color: var(--dim);
+  font: 9px/1.4 var(--mono); letter-spacing: .18em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 9px;
+}
+.deep > summary::-webkit-details-marker { display: none; }
+.deep > summary:hover { color: var(--muted); }
+.deep > summary::before { content: "+"; color: var(--acid); width: 10px; }
+.deep[open] > summary::before { content: "-"; }
+.deep > summary .hint { margin-left: auto; letter-spacing: .02em; text-transform: none; opacity: .7; }
+.deep .card { padding-top: 12px; }
+
+@media (max-width: 1180px) {
+  main { grid-template-columns: 264px minmax(0, 1fr) 272px; }
+  .metric { min-width: 68px; padding: 0 11px; }
+}
+@media (max-width: 980px) {
+  main { grid-template-columns: 258px minmax(0, 1fr); }
+  aside.right { display: none; }
+}
+@media (max-width: 860px) {
+  main { grid-template-columns: 1fr; }
+  aside.left { display: none; }
+  .metrics { display: none; }
+  section.view { padding: 16px 14px 48px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>答题链路</h1>
+    <span>OCS AI 网关 · trace explorer</span>
+  </div>
+  <div class="live" id="live"><span class="dot"></span><span id="liveText">连接中</span></div>
+  <div class="metrics" id="metrics"></div>
+  <div class="actions">
+    <button id="themeBtn" title="切换明暗外观" aria-label="切换明暗外观">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.6 9.4A5.8 5.8 0 0 1 6.6 2.4a5.8 5.8 0 1 0 7 7Z"/></svg>
+    </button>
+    <button id="followBtn" class="active">跟随最新</button>
+    <button id="pauseBtn">暂停</button>
+  </div>
+</header>
+
+<main>
+  <aside class="left">
+    <div class="side-title"><span>Traces</span><small id="listCount"></small></div>
+    <div class="filters">
+      <input id="search" type="search" placeholder="搜索题干…" autocomplete="off">
+      <div class="chips" id="sourceChips">
+        <span class="chip on" data-source="all">全部</span>
+        <span class="chip" data-source="official">官方</span>
+        <span class="chip" data-source="bank">题库</span>
+        <span class="chip" data-source="memory">记忆</span>
+        <span class="chip" data-source="cache">缓存</span>
+        <span class="chip" data-source="ai">AI</span>
+      </div>
+      <div class="filter-row">
+        <select id="statusSel">
+          <option value="all">全部状态</option>
+          <option value="ok">成功</option>
+          <option value="error">失败</option>
+          <option value="running">进行中</option>
+        </select>
+        <select id="sortSel">
+          <option value="new">最新优先</option>
+          <option value="slow">最慢优先</option>
+          <option value="tokens">Token 最多</option>
+        </select>
+      </div>
+    </div>
+    <div id="list"></div>
+  </aside>
+
+  <section class="view" id="view">
+    <div class="empty" id="empty">
+      <div class="big">AWAITING TRACE<span class="caret">▌</span></div>
+      <p>等待答题请求。<br>每答一道题，这里会画出完整链路：走了哪条路径、哪些模型并行作答、各自花了多久与多少 token。</p>
+    </div>
+    <div id="detail" hidden></div>
+  </section>
+
+  <aside class="right" id="rail"></aside>
+</main>
+
+<div class="drawer-mask" id="mask"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head"><b id="drawerTitle">详情</b><button class="ghost" id="drawerClose">关闭</button></div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STAGE_LABEL = {
+    official: '官方题库', bank: '题库匹配', snapshot: '选项快照', memory: '答题记忆',
+    cache: '答案缓存', prompt: '提示词准备', ai: 'AI 作答', 'ai-result': 'AI 结果',
+    vote: '模型投票', cross: '交叉验证', finish: '完成'
+  };
+  var STATUS_LABEL = {
+    hit: '命中', miss: '未命中', skip: '跳过', start: '开始', running: '进行中',
+    ok: '完成', done: '完成', 'no-provider': '无可用模型', fail: '失败',
+    consensus: '有共识', partial: '部分一致', 'no-winner': '无胜出答案', error: '错误',
+    cancelled: '已取消'
+  };
+  var SOURCE_LABEL = {
+    official: '官方答案', bank: '题库', memory: '答题记忆', cache: '缓存', ai: 'AI 作答'
+  };
+  var SRC_CLASS = { official: 'ok', bank: 'ok', memory: 'ok', cache: 'warn', ai: 'run' };
+
+  var state = {
+    traces: [], selected: null, follow: true, paused: false,
+    latest: 0, seenLatest: 0, lastSig: '',
+    source: 'all', status: 'all', sort: 'new', query: ''
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function ms(v) {
+    var n = Number(v);
+    if (!isFinite(n) || n < 0) return '—';
+    return n >= 1000 ? (n / 1000).toFixed(2) + 's' : Math.round(n) + 'ms';
+  }
+  function num(v) {
+    var n = Number(v);
+    return isFinite(n) ? n.toLocaleString('en-US') : '—';
+  }
+  function pct(v) { return (Number(v) * 100).toFixed(0) + '%'; }
+  function clock(ts) {
+    if (!ts) return '—';
+    return new Date(ts * 1000).toLocaleTimeString('zh-CN', { hour12: false });
+  }
+  function badge(text, cls) { return '<span class="badge ' + (cls || '') + '">' + esc(text) + '</span>'; }
+  function srcClass(src) { return SRC_CLASS[src] || ''; }
+  function srcLabel(trace) {
+    var src = trace.result && trace.result.source ? trace.result.source : '';
+    if (trace.status === 'running') return '作答中';
+    if (trace.status === 'error') return '失败';
+    return SOURCE_LABEL[src] || src || '完成';
+  }
+  function stageLabel(name) { return STAGE_LABEL[name] || name; }
+  function statusLabel(status) { return STATUS_LABEL[status] || status; }
+  function statusTone(status) {
+    if (status === 'hit' || status === 'ok' || status === 'consensus' || status === 'done') return 'ok';
+    if (status === 'start' || status === 'running') return 'run';
+    if (status === 'partial' || status === 'skip' || status === 'cancelled') return 'warn';
+    if (status === 'error' || status === 'fail' || status === 'no-winner' || status === 'no-provider') return 'err';
+    return 'mute';
+  }
+  function quantile(sorted, q) {
+    if (!sorted.length) return null;
+    var pos = (sorted.length - 1) * q;
+    var base = Math.floor(pos);
+    var rest = pos - base;
+    return sorted[base + 1] !== undefined
+      ? sorted[base] + rest * (sorted[base + 1] - sorted[base])
+      : sorted[base];
+  }
+
+  /* ---------------------------------------------------------------- metrics */
+  function computeMetrics() {
+    var done = state.traces.filter(function (t) { return t.status !== 'running'; });
+    var lat = done.map(function (t) { return Number(t.elapsed_ms) || 0; }).sort(function (a, b) { return a - b; });
+    var okCount = done.filter(function (t) { return t.status === 'ok'; }).length;
+    var cacheHits = done.filter(function (t) {
+      if (!t.result) return false;
+      // 官方直查也带 cached:true，不能算缓存命中；缓存复用才计入。
+      if (t.result.source === 'cache') return true;
+      return t.result.cached === true && t.result.source !== 'official';
+    }).length;
+    var tokenTraces = done.filter(function (t) { return (t.total_tokens || 0) > 0; });
+    var avgTokens = tokenTraces.length
+      ? Math.round(tokenTraces.reduce(function (sum, t) { return sum + t.total_tokens; }, 0) / tokenTraces.length)
+      : null;
+    return {
+      total: state.latest,
+      running: state.traces.filter(function (t) { return t.status === 'running'; }).length,
+      p50: quantile(lat, 0.5),
+      p95: quantile(lat, 0.95),
+      success: done.length ? okCount / done.length : null,
+      cacheRate: done.length ? cacheHits / done.length : null,
+      avgTokens: avgTokens
+    };
+  }
+
+  function renderMetrics() {
+    var m = computeMetrics();
+    var items = [
+      ['轨迹总数', num(m.total), ''],
+      ['正在作答', String(m.running), m.running ? 'warn' : ''],
+      ['P50 延迟', m.p50 == null ? '—' : ms(m.p50), ''],
+      ['P95 延迟', m.p95 == null ? '—' : ms(m.p95), m.p95 != null && m.p95 > 8000 ? 'warn' : ''],
+      ['成功率', m.success == null ? '—' : pct(m.success), m.success != null && m.success < 0.9 ? 'warn' : 'ok'],
+      ['缓存命中', m.cacheRate == null ? '—' : pct(m.cacheRate), ''],
+      ['平均 Token', m.avgTokens == null ? '—' : num(m.avgTokens), '']
+    ];
+    $('metrics').innerHTML = items.map(function (item) {
+      return '<div class="metric"><b class="' + item[2] + '">' + esc(item[1]) + '</b><span>' + esc(item[0]) + '</span></div>';
+    }).join('');
+  }
+
+  /* ---------------------------------------------------------------- list */
+  function visibleTraces() {
+    var list = state.traces.slice();
+    if (state.source !== 'all') {
+      list = list.filter(function (t) {
+        var src = t.result && t.result.source ? t.result.source : '';
+        return src === state.source;
+      });
+    }
+    if (state.status !== 'all') {
+      list = list.filter(function (t) { return t.status === state.status; });
+    }
+    if (state.query) {
+      var q = state.query.toLowerCase();
+      list = list.filter(function (t) { return String(t.title || '').toLowerCase().indexOf(q) >= 0; });
+    }
+    if (state.sort === 'slow') {
+      list.sort(function (a, b) { return (Number(b.elapsed_ms) || 0) - (Number(a.elapsed_ms) || 0); });
+    } else if (state.sort === 'tokens') {
+      list.sort(function (a, b) { return (Number(b.total_tokens) || 0) - (Number(a.total_tokens) || 0); });
+    }
+    return list;
+  }
+
+  function renderList() {
+    var list = visibleTraces();
+    if (!list.length) {
+      $('list').innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 6px;line-height:1.7">没有符合条件的轨迹。</div>';
+      $('listCount').textContent = state.traces.length + ' / ' + state.latest;
+      return;
+    }
+    $('list').innerHTML = list.map(function (t) {
+      var sel = state.selected && state.selected.id === t.id ? ' sel' : '';
+      var tone = t.status === 'running' ? 'run' : (t.status === 'error' ? 'err' : 'ok');
+      var src = t.result && t.result.source ? t.result.source : '';
+      var tokens = t.total_tokens ? num(t.total_tokens) + ' tok' : '';
+      return '<div class="item' + sel + '" data-id="' + esc(t.id) + '">' +
+        '<div class="l1"><span class="dot-status ' + tone + '"></span>' +
+        '<span class="seq">#' + t.seq + '</span>' +
+        '<span class="title" title="' + esc(t.title) + '">' + esc(t.title || '（无题干）') + '</span></div>' +
+        '<div class="l2">' + badge(srcLabel(t), t.status === 'running' ? 'run' : (t.status === 'error' ? 'err' : srcClass(src))) +
+        (t.models && t.models.length ? '<span>' + t.models.length + ' 模型</span>' : '') +
+        (tokens ? '<span class="sep">·</span><span>' + esc(tokens) + '</span>' : '') +
+        '<span class="ms">' + ms(t.elapsed_ms) + '</span></div></div>';
+    }).join('');
+    $('listCount').textContent = list.length + ' / ' + state.latest;
+  }
+
+  /* ---------------------------------------------------------------- solve */
+  function renderSolve(t) {
+    var inp = t.input || {};
+    var full = t.title_full || t.title || '';
+    var titleLen = Number(inp.title_len) || (t.title || '').length;
+    var titleModel = (inp.title_model != null) ? Number(inp.title_model) : titleLen;
+    var titleStored = (inp.title_stored != null) ? Number(inp.title_stored) : full.length;
+    var titleModelShort = titleModel < titleLen;
+    var titleStoredShort = titleStored < titleLen;
+    var optList = t.options || [];
+    var optCount = (inp.options != null) ? Number(inp.options) : optList.length;
+    var optModel = (inp.options_model != null) ? Number(inp.options_model) : optCount;
+    var optStored = (inp.options_stored != null) ? Number(inp.options_stored) : optList.length;
+    var optModelShort = optModel < optCount;
+    var optStoredShort = optStored < optCount;
+    var imgs = Number(inp.images) || 0;
+
+    var flags = '<span class="recv-lab">' + '题目接收' + '</span>' +
+      '<span class="flag ' + (titleModelShort ? 'warn' : 'ok') + '">' +
+        '题干 ' + titleLen + ' 字 · ' + (titleModelShort ? '模型收到 ' + titleModel + ' 字' : '完整') + '</span>' +
+      '<span class="flag ' + (optModelShort ? 'warn' : 'ok') + '">' +
+        '选项 ' + optCount + ' 个 · ' + (optModelShort ? '模型收到 ' + optModel + ' 个' : '完整') + '</span>' +
+      (imgs ? '<span class="flag ok">图片 ' + imgs + ' 张</span>'
+            : '<span class="flag mute">无图片</span>');
+
+    var opts = optList.map(function (opt, i) {
+      return '<div class="opt-line"><b>' + String.fromCharCode(65 + i) + '</b>' + esc(opt) + '</div>';
+    }).join('');
+
+    var models = t.models || [];
+    var steps = models.map(function (m) {
+      var tone = m.status === 'running' ? 'run'
+        : (m.status === 'error' ? 'err' : (m.status === 'cancelled' ? 'warn' : 'ok'));
+      var ansCls = m.status === 'error' ? ' bad' : (m.answer ? '' : ' pending');
+      var ans = m.status === 'error' ? '调用失败'
+        : (m.answer ? '答案 <b>' + esc(m.answer) + '</b>'
+          : (m.status === 'running' ? '思考中…' : (m.status === 'cancelled' ? '已取消' : '无答案')));
+      var meta = [];
+      if (m.elapsed_ms) meta.push(ms(m.elapsed_ms));
+      if (m.total_tokens) meta.push(num(m.total_tokens) + ' tok');
+      if ((m.reasoning || '').trim()) meta.push((m.reasoning || '').trim().length + ' 字思考');
+      if (m.confidence != null) meta.push('conf ' + Number(m.confidence).toFixed(2));
+      var reason = (m.reasoning || '').trim();
+      var body = reason
+        ? '<pre class="reason">' + esc(reason) + '</pre>'
+        : '<pre class="reason none">' + (m.status === 'error'
+            ? esc(m.error || '调用失败，无思考内容')
+            : (m.status === 'running' ? '仍在思考，思考过程会随答案一起返回。'
+              : '该接口本次未返回思考内容（部分模型只给答案）')) + '</pre>';
+      return '<div class="step">' +
+        '<div class="step-head"><span class="dot-status ' + tone + '"></span>' +
+        '<span class="sname">' + esc(m.name) + '</span>' +
+        (meta.length ? '<span class="smeta">' + esc(meta.join(' · ')) + '</span>' : '') +
+        '<span class="sans' + ansCls + '">' + ans + '</span></div>' + body + '</div>';
+    }).join('');
+
+    var r = t.result || {};
+    var finalAns = r.answer || (t.status === 'running' ? '…' : '—');
+    var finalSrc = r.provider ? ('来自 ' + r.provider) : srcLabel(t);
+    var valCls = String(finalAns).length > 10 ? ' long' : '';
+    var imgText = (t.image_text || '').trim();
+    var imgSrc = t.image_source || '';
+    var imgBox = '';
+    if (imgText || imgSrc) {
+      imgBox = '<div class="imgbox"><div class="imgbox-h">' + '图片公式 · ' + esc(imgSrc || '已转写') + '</div>' +
+        (imgText ? '<pre class="reason">' + esc(imgText) + '</pre>'
+                 : '<div class="imgbox-none">' + '图片未转写为文字，直接交给视觉模型识别。' + '</div>') +
+        '</div>';
+    }
+    var alert = '';
+    if (titleModelShort || optModelShort) {
+      var lost = [];
+      if (titleModelShort) lost.push('题干 ' + titleLen + ' 字，模型只收到前 ' + titleModel + ' 字');
+      if (optModelShort) lost.push('选项 ' + optCount + ' 个，模型只收到前 ' + optModel + ' 个');
+      alert = '<div class="recv-alert">' + '注意：输入超过网关上限，已被截断 —— ' + esc(lost.join('；')) +
+        '。模型当时看到的就是截断后的内容，答案可能因此受影响。' + '</div>';
+    } else if (titleStoredShort || optStoredShort) {
+      var kept = [];
+      if (titleStoredShort) kept.push('题干前 ' + titleStored + ' 字');
+      if (optStoredShort) kept.push('前 ' + optStored + ' 个选项');
+      alert = '<div class="recv-alert">' + '提示：模型收到的是完整输入；页面只展示' +
+        esc(kept.join('、')) + '（仅影响展示）。' + '</div>';
+    }
+
+    return '<div class="card solve"><h3>' + '解题过程' +
+      ' <span class="hint">' + '题目接收 · 完整题干 · 逐模型思考 · 结论' + '</span></h3>' +
+      '<div class="recv">' + flags + '</div>' + alert +
+      '<div class="qfull">' + esc(full || '（本题没有题干文本）') + '</div>' +
+      (opts ? '<div class="opts-full">' + opts + '</div>' : '') +
+      imgBox +
+      '<div class="steps">' + (steps ||
+        '<div class="step"><pre class="reason none">本次没有模型输出。</pre></div>') + '</div>' +
+      '<div class="final"><span class="lab">' + '最终答案' + '</span>' +
+      '<span class="val' + valCls + '">' + esc(finalAns) + '</span>' +
+      '<span class="src">' + esc(finalSrc) + '</span></div></div>';
+  }
+
+  /* ---------------------------------------------------------------- question */
+  function renderQuestion(t) {
+    var tags = [];
+    if (t.qtype) tags.push(badge(t.qtype, 'mute'));
+    if (t.scene) tags.push(badge(t.scene === 'unit' ? '单元测验' : t.scene, 'mute'));
+    if (t.subject) tags.push(badge(t.subject, 'mute'));
+    if ((t.options || []).length) tags.push(badge(t.options.length + ' 个选项', 'mute'));
+    tags.push(badge('#' + t.seq, 'mute'));
+    var opts = (t.options || []).map(function (opt, i) {
+      return '<span class="opt" title="' + esc(opt) + '">' + String.fromCharCode(65 + i) + '. ' + esc(opt) + '</span>';
+    }).join('');
+    return '<div class="card qhead"><h3>题目 <span class="hint">' + clock(t.started) + '</span></h3>' +
+      '<div class="tags">' + tags.join('') + '</div>' +
+      '<div class="qtitle">' + esc(t.title || '（无题干）') + '</div>' +
+      (opts ? '<div class="opts">' + opts + '</div>' : '') + '</div>';
+  }
+
+  /* ---------------------------------------------------------------- waterfall */
+  function renderWaterfall(t) {
+    var maxT = Math.max(1, Number(t.max_t) || Number(t.elapsed_ms) || 1);
+    var ticks = [0, 0.25, 0.5, 0.75, 1].map(function (ratio) {
+      return '<span style="left:' + (ratio * 100) + '%">' + ms(maxT * ratio) + '</span>';
+    }).join('');
+    var grids = [0.25, 0.5, 0.75].map(function (ratio) {
+      return '<div class="wf-grid" style="left:' + (ratio * 100) + '%"></div>';
+    }).join('');
+
+    var stageBars = (t.stages || []).map(function (stage) {
+      var tone = statusTone(stage.status);
+      var left = Math.min(100, (Number(stage.t) || 0) / maxT * 100);
+      var width = Math.max(0.6, (Number(stage.span_ms) || 0) / maxT * 100);
+      if (left + width > 100) width = 100 - left;
+      var label = stageLabel(stage.name);
+      var extra = stage.status === 'hit' && stage.answer ? ' · ' + stage.answer : '';
+      return '<div class="wf-bar ' + tone + '" style="left:' + left + '%;width:' + width + '%" ' +
+        'data-kind="stage" data-i="' + (t.stages || []).indexOf(stage) + '" ' +
+        'title="' + esc(label + ' · ' + statusLabel(stage.status) + extra + ' · ' + ms(stage.span_ms)) + '">' +
+        '<span>' + esc(label) + '</span></div>';
+    }).join('');
+
+    var modelRows = (t.models || []).map(function (model, index) {
+      var tone = model.status === 'running' ? 'run'
+        : (model.status === 'error' ? 'err' : (model.status === 'cancelled' ? 'warn' : 'ok'));
+      var start = Number(model.t) || 0;
+      var end = Number(model.t_end != null ? model.t_end : (t.max_t || 0));
+      var left = Math.min(100, start / maxT * 100);
+      var width = Math.max(0.8, (end - start) / maxT * 100);
+      if (left + width > 100) width = 100 - left;
+      var meta = model.answer || (model.status === 'cancelled' ? '已取消' : (model.error ? '错误' : ''));
+      return '<div class="wf-row"><div class="wf-label" title="' + esc(model.name) + '">' +
+        '<span class="dot-status ' + tone + '" style="display:inline-block;margin-right:5px"></span>' +
+        esc(model.name) + '</div><div class="wf-track">' + grids +
+        '<div class="wf-bar ' + tone + '" style="left:' + left + '%;width:' + width + '%" ' +
+        'data-kind="model" data-i="' + index + '" title="' + esc(model.name + ' · ' + (meta || '进行中') + ' · ' + ms(end - start)) + '">' +
+        '<span>' + esc(meta) + '</span></div></div></div>';
+    }).join('');
+
+    var stageRow = '<div class="wf-row"><div class="wf-label">决策阶段</div>' +
+      '<div class="wf-track">' + grids + stageBars + '</div></div>';
+
+    return '<div class="card"><h3>瀑布图 <span class="hint">并行模型按真实起止时间绘制 · 点击查看详情</span></h3>' +
+      '<div class="wf"><div class="wf-axis"><div></div><div class="wf-ticks">' + ticks + '</div></div>' +
+      stageRow + (modelRows || '') + '</div>' +
+      '<div class="wf-legend">' +
+      '<span><i style="background:var(--green)"></i>成功</span>' +
+      '<span><i style="background:var(--acid)"></i>进行中</span>' +
+      '<span><i style="background:var(--amber)"></i>跳过/部分</span>' +
+      '<span><i style="background:var(--red)"></i>失败</span>' +
+      '<span><i style="background:var(--line-strong)"></i>未命中</span></div></div>';
+  }
+
+  /* ---------------------------------------------------------------- models */
+  function renderModels(t) {
+    var models = t.models || [];
+    if (!models.length) {
+      return '<div class="card"><h3>模型作答</h3><div style="color:var(--dim);font-size:11px">本题未调用模型（题库 / 缓存 / 记忆命中）。</div></div>';
+    }
+    var maxElapsed = Math.max.apply(null, models.map(function (m) { return Number(m.elapsed_ms) || 0; }).concat([1]));
+    var cards = models.map(function (m, index) {
+      var tone = m.status === 'running' ? 'run'
+        : (m.status === 'error' ? 'err' : (m.status === 'cancelled' ? 'warn' : 'ok'));
+      var cls = tone;
+      var answer = m.answer ? esc(m.answer)
+        : (m.status === 'running' ? '思考中…' : (m.status === 'cancelled' ? '已取消' : '—'));
+      var pending = m.answer ? '' : ' pending';
+      var conf = (m.confidence != null) ? Number(m.confidence).toFixed(2) : '—';
+      var tokens = m.total_tokens != null ? num(m.total_tokens) + ' tok' : '';
+      var elapsed = Number(m.elapsed_ms) || 0;
+      return '<div class="model ' + cls + '" data-kind="model" data-i="' + index + '">' +
+        '<div class="m1"><span class="dot-status ' + tone + '"></span>' +
+        '<span class="name" title="' + esc(m.model || m.name) + '">' + esc(m.name) + '</span>' +
+        (m.provider_name && m.provider_name !== m.name && !/^\d+$/.test(m.provider_name) ? '<span class="pn">' + esc(m.provider_name) + '</span>' : '') +
+        '</div>' +
+        '<div class="m2"><span class="ans' + pending + '">' + answer + '</span>' +
+        '<span class="side">' + esc(conf) + '<br>' + ms(m.elapsed_ms) + '</span></div>' +
+        (m.error ? '<div class="err">' + esc(m.error) + '</div>' : '') +
+        '<div class="m3">' + (tokens ? '<span>' + esc(tokens) + '</span>' : '') +
+        (m.prompt_tokens != null ? '<span>in ' + num(m.prompt_tokens) + '</span>' : '') +
+        (m.completion_tokens != null ? '<span>out ' + num(m.completion_tokens) + '</span>' : '') +
+        '</div>' +
+        '<div class="bar-mini"><i style="width:' + Math.max(3, elapsed / maxElapsed * 100) + '%"></i></div></div>';
+    }).join('');
+    var tokenSum = t.total_tokens ? '<span class="hint">合计 ' + num(t.total_tokens) + ' tokens</span>' : '';
+    return '<div class="card"><h3>模型作答 ' + tokenSum + '</h3><div class="models">' + cards + '</div></div>';
+  }
+
+  /* ---------------------------------------------------------------- verdict */
+  function renderVerdict(t) {
+    var r = t.result || {};
+    var cls = t.status === 'error' ? 'err' : (r.source === 'ai' ? 'ai' : '');
+    var providerLabel = r.provider || '';
+    var hit = providerLabel && (t.models || []).find(function (m) {
+      return m.provider_name === providerLabel || m.name === providerLabel;
+    });
+    if (hit) providerLabel = hit.name;
+    var riskHtml = '';
+    if (t.status === 'error') riskHtml = '<div class="risk err">' + esc(t.error || '请求失败') + '</div>';
+    else if (r.risk === true) riskHtml = '<div class="risk warn">低置信 / 无共识，已标记为风险答案</div>';
+    else if (r.risk === false) riskHtml = '<div class="risk ok">共识充分，按正常答案返回</div>';
+    var kv = '';
+    if (providerLabel) kv += '<div class="kv"><span class="k">作答模型</span><span class="v">' + esc(providerLabel) + '</span></div>';
+    if (r.confidence != null) kv += '<div class="kv"><span class="k">置信度</span><span class="v">' + Number(r.confidence).toFixed(2) + '</span></div>';
+    if (r.consensus) kv += '<div class="kv"><span class="k">共识</span><span class="v">' + esc(r.consensus) + '</span></div>';
+    if (r.match) kv += '<div class="kv"><span class="k">匹配方式</span><span class="v">' + esc(r.match) + '</span></div>';
+    if (r.cached) kv += '<div class="kv"><span class="k">缓存</span><span class="v">命中</span></div>';
+    kv += '<div class="kv"><span class="k">总耗时</span><span class="v">' + ms(t.elapsed_ms) + '</span></div>';
+    if (t.total_tokens) kv += '<div class="kv"><span class="k">Token</span><span class="v">' + num(t.total_tokens) + '</span></div>';
+    if ((t.models || []).length) kv += '<div class="kv"><span class="k">模型数</span><span class="v">' + t.models.length + '</span></div>';
+    return '<div class="card"><h3>最终裁决</h3>' +
+      '<div class="answer ' + cls + '">' + esc((r.answer || (t.status === 'running' ? '…' : '—'))) + '</div>' +
+      '<div class="answer-sub">' + esc(srcLabel(t)) + '</div>' + kv + riskHtml + '</div>';
+  }
+
+  function renderVotes(t) {
+    var vote = t.vote;
+    if (!vote) {
+      return '<div class="card"><h3>投票明细</h3><div style="color:var(--dim);font-size:11px">本次没有投票。</div></div>';
+    }
+    if (vote.kind === 'cross') {
+      return '<div class="card"><h3>投票明细</h3>' +
+        '<div class="kv"><span class="k">交叉验证</span><span class="v">' + esc(statusLabel(vote.cross) || '—') + '</span></div>' +
+        (vote.alt ? '<div class="kv"><span class="k">备选答案</span><span class="v">' + esc(vote.alt) + '</span></div>' : '') +
+        (vote.confidence != null ? '<div class="kv"><span class="k">置信度</span><span class="v">' + Number(vote.confidence).toFixed(2) + '</span></div>' : '') +
+        '</div>';
+    }
+    var votes = vote.votes || {};
+    var keys = Object.keys(votes);
+    if (!keys.length) {
+      return '<div class="card"><h3>投票明细</h3><div style="color:var(--dim);font-size:11px">没有收到可解析的答案。</div></div>';
+    }
+    var max = Math.max.apply(null, keys.map(function (k) { return Number(votes[k]) || 0; }).concat([1]));
+    var rows = keys.sort(function (a, b) { return (votes[b] || 0) - (votes[a] || 0); }).map(function (key) {
+      var count = Number(votes[key]) || 0;
+      return '<div class="vote-row"><span class="lab" title="' + esc(key) + '">' + esc(key) + '</span>' +
+        '<span class="bar"><i style="width:' + Math.max(4, count / max * 100) + '%"></i></span>' +
+        '<span class="num">' + count + '</span></div>';
+    }).join('');
+    var notes = [];
+    if (vote.share != null) notes.push('份额 ' + pct(vote.share));
+    if (vote.models != null) notes.push(vote.models + ' 个模型');
+    if (vote.rounds) notes.push(vote.rounds + ' 轮');
+    if (vote.samples != null) notes.push(vote.samples + ' 次采样');
+    if (vote.passed === true) notes.push('≥2 次一致');
+    else if (vote.passed === false) notes.push('未达 2 次一致');
+    return '<div class="card"><h3>投票明细</h3><div class="votes">' + rows + '</div>' +
+      (notes.length ? '<div class="vote-note">' + esc(notes.join(' · ')) + '</div>' : '') + '</div>';
+  }
+
+  function renderMeta(t) {
+    var kv = '';
+    kv += '<div class="kv"><span class="k">Trace ID</span><span class="v mono">' + esc(t.id) + '</span></div>';
+    kv += '<div class="kv"><span class="k">序号</span><span class="v mono">#' + t.seq + '</span></div>';
+    kv += '<div class="kv"><span class="k">开始</span><span class="v">' + clock(t.started) + '</span></div>';
+    if (t.finished) kv += '<div class="kv"><span class="k">结束</span><span class="v">' + clock(t.finished) + '</span></div>';
+    kv += '<div class="kv"><span class="k">时间轴长度</span><span class="v">' + ms(t.max_t) + '</span></div>';
+    if (t.context) kv += '<div class="kv"><span class="k">上下文</span><span class="v">' + esc(t.context) + '</span></div>';
+    return '<div class="card"><h3>元数据</h3>' + kv + '</div>';
+  }
+
+  /* ---------------------------------------------------------------- timeline */
+  function renderTimeline(t) {
+    var events = [];
+    (t.stages || []).forEach(function (s) {
+      events.push({ t: Number(s.t) || 0, name: stageLabel(s.name), text: statusLabel(s.status) + (s.answer ? ' · ' + s.answer : ''), tone: statusTone(s.status) });
+    });
+    (t.models || []).forEach(function (m) {
+      if (m.t_end != null) {
+        events.push({ t: m.t_end, name: '模型', text: m.name + ' → ' + (m.error ? m.error : (m.answer || '—')) + (m.total_tokens ? ' · ' + num(m.total_tokens) + ' tok' : ''), tone: m.status === 'error' ? 'err' : 'ok' });
+      }
+    });
+    if (t.finished) {
+      events.push({ t: t.elapsed_ms || 0, name: '结束', text: t.status === 'error' ? (t.error || '失败') : ('总耗时 ' + ms(t.elapsed_ms)), tone: t.status === 'error' ? 'err' : 'ok' });
+    }
+    events.sort(function (a, b) { return a.t - b.t; });
+    return '<div class="card"><h3>事件流</h3>' + events.map(function (e) {
+      return '<div class="tl ' + (e.tone === 'err' ? 'err' : (e.tone === 'ok' ? 'ok' : '')) + '">' +
+        '<span class="t">+' + Math.round(e.t) + 'ms</span><span class="n">' + esc(e.name) + '</span>' +
+        '<span class="d">' + esc(e.text) + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  /* ---------------------------------------------------------------- detail */
+  function traceSig(t) {
+    return [t.id, t.status, (t.stages || []).length, t.total_tokens, (t.image_text || '').length,
+      (t.models || []).map(function (m) { return m.status + ':' + m.answer + ':' + m.elapsed_ms + ':' + m.total_tokens + ':' + (m.reasoning || '').length; }).join('|'),
+      t.vote ? JSON.stringify(t.vote) : '', t.result ? JSON.stringify(t.result) : ''].join('#');
+  }
+
+  function renderDetail() {
+    var t = state.selected;
+    if (!t) {
+      $('empty').hidden = false;
+      $('detail').hidden = true;
+      $('rail').innerHTML = '';
+      return;
+    }
+    var sig = traceSig(t);
+    if (sig !== state.lastSig) {
+      state.lastSig = sig;
+      var deepOpen = !!document.querySelector('#detail details.deep[open]');
+      $('detail').innerHTML = renderSolve(t) +
+        '<details class="deep"><summary>' + '深层信息 · 瀑布图 / 模型面板 / 事件流' +
+        '<span class="hint">' + '排查慢在哪、谁失败了再看' + '</span></summary>' +
+        renderWaterfall(t) + renderModels(t) + renderTimeline(t) + '</details>' +
+        '<div class="foot">trace ' + esc(t.id) + ' · ' + new Date((t.started || 0) * 1000).toLocaleString('zh-CN') + '</div>';
+      if (deepOpen) {
+        var deep = document.querySelector('#detail details.deep');
+        if (deep) deep.open = true;
+      }
+      $('rail').innerHTML = renderVerdict(t) + renderVotes(t) + renderMeta(t);
+      $('empty').hidden = true;
+      $('detail').hidden = false;
+    }
+  }
+
+  function openDrawer(kind, index) {
+    var t = state.selected;
+    if (!t) return;
+    var data, title;
+    if (kind === 'model') {
+      data = (t.models || [])[index];
+      if (!data) return;
+      title = data.name;
+    } else {
+      data = (t.stages || [])[index];
+      if (!data) return;
+      title = stageLabel(data.name);
+    }
+    var kv = Object.keys(data).filter(function (k) {
+      return ['name', 'status', 't', 't_end', 'span_ms', 'elapsed_ms', 'answer', 'confidence',
+        'error', 'provider_name', 'model', 'prompt_tokens', 'completion_tokens', 'total_tokens',
+        'item_id', 'count', 'rounds', 'used', 'mode', 'unit_mode'].indexOf(k) >= 0;
+    }).map(function (k) {
+      var v = data[k];
+      if (v == null || v === '') return '';
+      return '<div class="kv"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + '</span></div>';
+    }).join('');
+    $('drawerTitle').textContent = title;
+    $('drawerBody').innerHTML = kv + '<pre>' + esc(JSON.stringify(data, null, 2)) + '</pre>';
+    $('drawer').classList.add('on');
+    $('mask').classList.add('on');
+  }
+  function closeDrawer() {
+    $('drawer').classList.remove('on');
+    $('mask').classList.remove('on');
+  }
+
+  /* ---------------------------------------------------------------- selection & render */
+  function selectTrace(trace, follow) {
+    state.selected = trace;
+    state.follow = !!follow;
+    state.lastSig = '';
+    if (trace) {
+      try { history.replaceState(null, '', '/trace?seq=' + trace.seq); } catch (err) {}
+    }
+    render();
+  }
+
+  function pickSelected() {
+    var list = visibleTraces();
+    if (!list.length) { state.selected = null; return; }
+    if (state.follow) {
+      var running = list.find(function (t) { return t.status === 'running'; });
+      state.selected = running || list[0];
+      return;
+    }
+    var id = state.selected && state.selected.id;
+    state.selected = list.find(function (t) { return t.id === id; }) || list[0];
+  }
+
+  function render() {
+    pickSelected();
+    renderMetrics();
+    renderList();
+    renderDetail();
+    $('followBtn').classList.toggle('active', state.follow);
+  }
+
+  /* ---------------------------------------------------------------- polling */
+  function poll() {
+    if (state.paused) return;
+    fetch('/api/trace/recent?limit=50', { cache: 'no-store' })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        state.traces = (data && data.traces) || [];
+        state.latest = (data && data.latest) || 0;
+        if (state.latest > state.seenLatest) state.seenLatest = state.latest;
+        $('live').classList.add('on');
+        $('liveText').textContent = 'LIVE ' + clock(Date.now() / 1000);
+        render();
+      })
+      .catch(function () {
+        $('live').classList.remove('on');
+        $('liveText').textContent = '连接失败，重试中';
+      });
+  }
+
+  /* ---------------------------------------------------------------- events */
+  $('list').addEventListener('click', function (event) {
+    var node = event.target.closest('.item');
+    if (!node) return;
+    var found = state.traces.find(function (t) { return t.id === node.getAttribute('data-id'); });
+    if (found) selectTrace(found, false);
+  });
+
+  $('followBtn').addEventListener('click', function () {
+    state.follow = true;
+    state.lastSig = '';
+    render();
+  });
+
+  $('pauseBtn').addEventListener('click', function () {
+    state.paused = !state.paused;
+    $('pauseBtn').textContent = state.paused ? '继续' : '暂停';
+    $('pauseBtn').classList.toggle('active', state.paused);
+    $('live').classList.toggle('on', !state.paused);
+    $('liveText').textContent = state.paused ? '已暂停' : '已连接';
+    if (!state.paused) poll();
+  });
+
+  $('search').addEventListener('input', function (event) {
+    state.query = event.target.value.trim();
+    state.lastSig = '';
+    render();
+  });
+
+  $('sourceChips').addEventListener('click', function (event) {
+    var chip = event.target.closest('.chip');
+    if (!chip) return;
+    state.source = chip.getAttribute('data-source');
+    Array.prototype.forEach.call($('sourceChips').children, function (node) {
+      node.classList.toggle('on', node === chip);
+    });
+    state.lastSig = '';
+    render();
+  });
+
+  $('statusSel').addEventListener('change', function (event) {
+    state.status = event.target.value; state.lastSig = ''; render();
+  });
+  $('sortSel').addEventListener('change', function (event) {
+    state.sort = event.target.value; state.lastSig = ''; render();
+  });
+
+  $('view').addEventListener('click', function (event) {
+    var node = event.target.closest('[data-kind]');
+    if (!node) return;
+    openDrawer(node.getAttribute('data-kind'), Number(node.getAttribute('data-i')));
+  });
+  $('rail').addEventListener('click', function (event) {
+    var node = event.target.closest('[data-kind]');
+    if (!node) return;
+    openDrawer(node.getAttribute('data-kind'), Number(node.getAttribute('data-i')));
+  });
+  $('drawerClose').addEventListener('click', closeDrawer);
+  $('mask').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeDrawer();
+  });
+
+  /* ---------------------------------------------------------------- boot */
+  var initialSeq = null;
+  try { initialSeq = Number(new URLSearchParams(location.search).get('seq')) || null; } catch (err) {}
+  poll();
+  if (initialSeq) {
+    setTimeout(function () {
+      var found = state.traces.find(function (t) { return t.seq === initialSeq; });
+      if (found) selectTrace(found, false);
+    }, 400);
+  }
+  setInterval(poll, 700);
+
+  $('themeBtn').addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('gw_theme', next); } catch (err) {}
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', next === 'light' ? '#F2F1EA' : '#07080B');
+  });
+})();
+</script>
+</body>
+</html>

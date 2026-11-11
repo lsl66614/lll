@@ -1,0 +1,243 @@
+{
+  "summary": {
+    "generated": "2026-11-10 22:05:40",
+    "base_url": "http://127.0.0.1:8010",
+    "total_questions": 6,
+    "valid": 6,
+    "correct": 6,
+    "wrong": 0,
+    "failed": 0,
+    "accuracy_pct": 100.0,
+    "elapsed_s": 40.7,
+    "by_type": {
+      "single": {
+        "name": "单选",
+        "valid": 6,
+        "correct": 6,
+        "wrong": 0,
+        "failed": 0,
+        "accuracy_pct": 100.0
+      }
+    },
+    "by_group": {
+      "text-baseline": {
+        "valid": 6,
+        "correct": 6,
+        "wrong": 0,
+        "failed": 0,
+        "accuracy_pct": 100.0
+      }
+    },
+    "model_votes": 12
+  },
+  "results": [
+    {
+      "id": "B01",
+      "type": "single",
+      "group": "text-baseline",
+      "expected": "D",
+      "got": "D",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 2.7,
+      "source": "高职线性代数100题 Q1（文本对照）",
+      "detail": {
+        "answer": "D",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 2697,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "D": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": [
+            "3: 3：HTTP 429: 商汤小浣熊: 您的模型请求频率超限，请稍后重试"
+          ]
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "B02",
+      "type": "single",
+      "group": "text-baseline",
+      "expected": "C",
+      "got": "C",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 4.65,
+      "source": "高职线性代数100题 Q5（文本对照）",
+      "detail": {
+        "answer": "C",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 4645,
+        "confidence": 1.0,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "C": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "B03",
+      "type": "single",
+      "group": "text-baseline",
+      "expected": "C",
+      "got": "C",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 3.65,
+      "source": "高职线性代数100题 Q9（文本对照）",
+      "detail": {
+        "answer": "C",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 3634,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "C": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "B04",
+      "type": "single",
+      "group": "text-baseline",
+      "expected": "D",
+      "got": "D",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 6.52,
+      "source": "高职线性代数100题 Q10（文本对照）",
+      "detail": {
+        "answer": "D",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 6491,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "D": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "B05",
+      "type": "single",
+      "group": "text-baseline",
+      "expected": "C",
+      "got": "C",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 3.3,
+      "source": "高职线性代数100题 Q14（文本对照）",
+      "detail": {
+        "answer": "C",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 3288,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "C": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "B06",
+      "type": "single",
+      "group": "text-baseline",
+      "expected": "B",
+      "got": "B",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 4.68,
+      "source": "高职线性代数100题 Q40（文本对照）",
+      "detail": {
+        "answer": "B",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 4658,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "B": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": [
+            "3: 3：HTTP 429: 商汤小浣熊: 您的模型请求频率超限，请稍后重试"
+          ]
+        },
+        "source": "ai"
+      }
+    }
+  ]
+}

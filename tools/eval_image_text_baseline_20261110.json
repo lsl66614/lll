@@ -1,0 +1,49 @@
+{
+  "name": "ocs-gateway-image-text-baseline-20261110",
+  "created": "2026-11-10",
+  "notes": "与图片题同一批题目的纯文本对照：题干用线性文本写出行列式/方程组，不带图片，用于区分「公式读图能力」与「题目本身难度」。",
+  "questions": [
+    {
+      "id": "B01", "type": "single", "group": "text-baseline",
+      "title": "已知二阶行列式 |a1 b1; a2 b2| = 1，|a1 c1; a2 c2| = 2，则 |a1 b1+c1; a2 b2+c2| =（ ）",
+      "options": ["-3", "-1", "1", "3"],
+      "answer": "D",
+      "source": "高职线性代数100题 Q1（文本对照）"
+    },
+    {
+      "id": "B02", "type": "single", "group": "text-baseline",
+      "title": "三阶行列式 |0 -1 1; 1 0 -1; -1 1 0| 中元素 a21 的代数余子式 A21 =（ ）",
+      "options": ["-2", "-1", "1", "2"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q5（文本对照）"
+    },
+    {
+      "id": "B03", "type": "single", "group": "text-baseline",
+      "title": "设行列式 D = |a11 a12 a13; a21 a22 a23; a31 a32 a33| = 3，D1 = |a11 5a11+2a12 a13; a21 5a21+2a22 a23; a31 5a31+2a32 a33|，则 D1 的值为（ ）",
+      "options": ["-15", "-6", "6", "15"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q9（文本对照）"
+    },
+    {
+      "id": "B04", "type": "single", "group": "text-baseline",
+      "title": "已知三阶行列式 |a11 2a12 3a13; 2a21 4a22 6a23; 3a31 6a32 9a33| = 6，则 |a11 a12 a13; a21 a22 a23; a31 a32 a33| =（ ）",
+      "options": ["1", "12", "3", "1/6"],
+      "answer": "D",
+      "source": "高职线性代数100题 Q10（文本对照）"
+    },
+    {
+      "id": "B05", "type": "single", "group": "text-baseline",
+      "title": "若齐次线性方程组 { ax1+x2+x3=0; x1+ax2+x3=0; x1+x2+ax3=0 } 有非零解，则 a 的值为（ ）",
+      "options": ["a=1", "a=2", "a=1 或 a=-2", "a=-1 或 a=-2"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q14（文本对照）"
+    },
+    {
+      "id": "B06", "type": "single", "group": "text-baseline",
+      "title": "非齐次线性方程组 { x1-2x2+x3=-2; -2x1+x2+x3=-2; x1+x2-2x3=4 } 的系数矩阵的秩和增广矩阵的秩相等且为 2，则该方程组（ ）",
+      "options": ["只有零解", "有无穷多组解", "有唯一的非零解", "无解"],
+      "answer": "B",
+      "source": "高职线性代数100题 Q40（文本对照）"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# 这个目录用来放运行时数据：providers.json（AI 配置）、answers.db（缓存）
+# 内容已被 .gitignore 忽略，保留本文件只是为了让目录存在于仓库里

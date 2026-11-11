@@ -1,0 +1,98 @@
+/* ============================================================================
+   OCS AI Gateway · 设计 token（单一来源）
+
+   三页共用：/admin、/trace、/install。改这里，三页一起变。
+   命名分三层：
+     1) 基础语义层  --bg / --panel / --text / --accent ...
+     2) 组件层      --radius-* / --shadow-* / --focus-ring
+     3) 兼容别名    --acid / --green / --red / --dim ...（trace 旧命名）
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* 面 */
+  --bg: #07080B;
+  --bg-elev: #0B0D12;
+  --panel: #0E1117;
+  --panel-2: #141922;
+
+  /* 线 */
+  --line: #1D232D;
+  --line-strong: #2C3543;
+  --line-soft: rgba(29, 35, 45, .6);
+
+  /* 字 */
+  --text: #EDF0F4;
+  --muted: #A0A9B8;
+  --faint: #7C8698;
+
+  /* 色 */
+  --accent: #C6F24E;
+  --accent-strong: #DBFF78;
+  --accent-ink: #090C05;
+  --accent-soft: rgba(198, 242, 78, .11);
+  --ok: #5BE49B;
+  --warn: #F5B544;
+  --danger: #FF7A7A;
+  --blue: #8AB4F8;
+
+  /* 字体：display 用于标题，body 用于正文，mono 只给数据/ID/URL */
+  --ui: "Bahnschrift", "Segoe UI Variable Display", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --font-display: "Bahnschrift", "Segoe UI Variable Display", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --font-body: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --sans: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", "SF Mono", "JetBrains Mono", Consolas, ui-monospace, monospace;
+
+  /* 布局 */
+  --sidebar-w: 248px;
+
+  /* 圆角 */
+  --radius-xs: 7px;
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+
+  /* 阴影 / 焦点 */
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, .035) inset, 0 18px 50px -40px rgba(0, 0, 0, .95);
+  --shadow-float: 0 24px 70px -32px rgba(0, 0, 0, .9);
+  --focus-ring: 0 0 0 3px rgba(198, 242, 78, .24);
+
+  /* 兼容别名（trace 旧命名 → 统一语义） */
+  --bg-soft: var(--bg-elev);
+  --dim: var(--faint);
+  --acid: var(--accent);
+  --green: var(--ok);
+  --red: var(--danger);
+  --amber: var(--warn);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #F2F1EA;
+  --bg-elev: #FBFAF5;
+  --panel: #FFFFFF;
+  --panel-2: #F5F4ED;
+
+  --line: #E1DED3;
+  --line-strong: #CCC8B9;
+  --line-soft: rgba(225, 222, 211, .7);
+
+  --text: #191C15;
+  --muted: #575E50;
+  --faint: #646B5D;
+
+  --accent: #4C7A00;
+  --accent-strong: #3D6300;
+  --accent-ink: #FFFFFF;
+  --accent-soft: rgba(76, 122, 0, .10);
+  --ok: #1E7A4D;
+  --warn: #96600A;
+  --danger: #BC3535;
+  --blue: #2F6BD8;
+
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 18px 50px -42px rgba(46, 48, 38, .45);
+  --shadow-float: 0 28px 70px -34px rgba(46, 48, 38, .35);
+  --focus-ring: 0 0 0 3px rgba(76, 122, 0, .20);
+}

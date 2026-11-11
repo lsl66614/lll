@@ -1,0 +1,49 @@
+[project]
+name = "ocs-ai-gateway"
+version = "1.0.0"
+description = "给 OCS 网课助手用的 AI 题库网关：多模型池、自动故障切换、答案缓存、网页管理台"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "liu620305-jpg" }]
+keywords = ["ocsjs", "ocs", "answererwrapper", "fastapi", "llm", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+]
+dependencies = [
+    "fastapi[standard]>=0.115.0",
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.0",
+    "pillow>=10.0.0",
+    "openpyxl>=3.1.0",          # /api/bank/import-xlsx；不装则 Excel 导入 500
+    "math-verify>=0.9.0",       # 填空题/公式答案的符号等价判定；缺失时自动降级
+]
+
+[project.optional-dependencies]
+# 语义召回（data/models/bge-small-zh-v1.5 存在时自动启用）
+semantic = [
+    "numpy>=1.26",
+    "onnxruntime>=1.17",
+    "tokenizers>=0.15",
+]
+# 本地 OCR 兜底（pix2text 体积大，按需手动安装：uv pip install pix2text）
+ocr = [
+    "rapidocr-onnxruntime>=1.3.0",
+]
+# 油猴脚本端到端冒烟（scripts/e2e_userscript.py；使用系统 Edge，无需下载内核）
+e2e = [
+    "playwright>=1.50",
+]
+
+[project.urls]
+Homepage = "https://github.com/liu620305-jpg/ocs-ai-gateway"
+Issues = "https://github.com/liu620305-jpg/ocs-ai-gateway/issues"
+
+[tool.uv]
+package = false

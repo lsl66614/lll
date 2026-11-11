@@ -1,0 +1,231 @@
+{
+  "name": "ocs-gateway-eval-20261110",
+  "created": "2026-11-10",
+  "notes": "用于单元模式首答准确率实测。单选/填空/判断均来自公开试题；多选为本地自建并用数学验证。判断与多选答案均由本地逐题推导核对。",
+  "sources": {
+    "single": "高职线性代数100题及解答（zstp.edu.cn PDF，官方答案键：11-15 CABCD / 16-20 DABDC / 21-25 DBCDC / 26-30 DBABC / 31-35 ABCDC / 36-40 ADACB）",
+    "completion": "概率论与数理统计期末试卷解析（cnblogs.com/gccbuaa/p/19466296，官方答案：1/12、2/3、0.8、28、5.6）",
+    "judge": "中国科学技术大学线性代数（B1）历年真题（home.ustc.edu.cn/~wt1997，原卷无答案，答案由本地逐题推导）",
+    "multiple": "本地自建（数学验证）"
+  },
+  "questions": [
+    {
+      "id": "S01", "type": "single",
+      "title": "设三阶行列式 |a_ij| = |1 x 3; x 2 0; 5 -1 4|，元素 a12 的代数余子式 A12 = 8，则元素 a21 的代数余子式 A21 =（ ）",
+      "options": ["-2", "6", "5", "-5"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q11"
+    },
+    {
+      "id": "S02", "type": "single",
+      "title": "若齐次线性方程组 AX=0 有非零解，则其系数行列式（ ）",
+      "options": ["|A|≠0", "|A|=0", "|A|=1", "|A|≠1"],
+      "answer": "B",
+      "source": "高职线性代数100题 Q13"
+    },
+    {
+      "id": "S03", "type": "single",
+      "title": "若齐次线性方程组 { ax1+x2+x3=0; x1+ax2+x3=0; x1+x2+ax3=0 } 有非零解，则 a 的值为（ ）",
+      "options": ["a=1", "a=2", "a=1 或 a=-2", "a=-1 或 a=-2"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q14"
+    },
+    {
+      "id": "S04", "type": "single",
+      "title": "下列说法正确的是（ ）",
+      "options": ["矩阵就是行列式", "矩阵可以比较大小", "若两个矩阵都是零矩阵，则这两个矩阵相等", "若两个矩阵相等，则它们的对应元素也相等"],
+      "answer": "D",
+      "source": "高职线性代数100题 Q15"
+    },
+    {
+      "id": "S05", "type": "single",
+      "title": "设 A 为 m×s 矩阵，B 为 s×n 矩阵，A 与 B 的乘积为矩阵 C=AB，则矩阵 C 的行数与列数为（ ）",
+      "options": ["m 行 n 列", "n 行 m 列", "s 行 m 列", "s 行 n 列"],
+      "answer": "A",
+      "source": "高职线性代数100题 Q17"
+    },
+    {
+      "id": "S06", "type": "single",
+      "title": "设 A、B、C 为矩阵（假定矩阵的乘法都有意义），以下错误的是（ ）",
+      "options": ["(AB)C=A(BC)", "AB=BA", "A(B+C)=AB+AC，(B+C)A=BA+CA", "(λA)B=λ(AB)=A(λB)（λ 是任意数）"],
+      "answer": "B",
+      "source": "高职线性代数100题 Q18"
+    },
+    {
+      "id": "S07", "type": "single",
+      "title": "设 A、B、C 为矩阵（假定矩阵的乘法都有意义），以下正确的是（ ）",
+      "options": ["A≠O，B≠O ⇒ AB≠O", "AB=O ⇒ A=O 或 B=O", "AC=BC ⇒ A=B", "(AB)^k ≠ A^k B^k"],
+      "answer": "D",
+      "source": "高职线性代数100题 Q19"
+    },
+    {
+      "id": "S08", "type": "single",
+      "title": "设 A、B、C 均为 n 阶方阵，则下列命题中不正确的是（ ）",
+      "options": ["(A+B)+C=A+(B+C)", "(AB)C=A(BC)", "AB=BA", "A(B+C)=AB+AC"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q20"
+    },
+    {
+      "id": "S09", "type": "single",
+      "title": "设 A、B 为 n 阶方阵，满足 AB=0，则必有（ ）",
+      "options": ["A=0 或 B=0", "|A|=0 或 |B|=0", "BA=0", "|A|+|B|=0"],
+      "answer": "B",
+      "source": "高职线性代数100题 Q22"
+    },
+    {
+      "id": "S10", "type": "single",
+      "title": "设 A 为 3 阶方阵，det(A)=-3，则 det(-2A)=（ ）",
+      "options": ["6", "-6", "24", "-24"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q23"
+    },
+    {
+      "id": "S11", "type": "single",
+      "title": "设 A 为 3 阶方阵，且 |A|=2，则 |2A^{-1}|=（ ）",
+      "options": ["-4", "-1", "1", "4"],
+      "answer": "D",
+      "source": "高职线性代数100题 Q24"
+    },
+    {
+      "id": "S12", "type": "single",
+      "title": "设 A、B 均为 n 阶方阵且可逆，|A|、|B| 分别为 A、B 的行列式，则下列命题中不正确的是（ ）",
+      "options": ["|A^T|=|A|", "|λA|=λ|A|", "|AB|=|A||B|", "|A^{-1}|=1/|A|"],
+      "answer": "B",
+      "source": "高职线性代数100题 Q27"
+    },
+    {
+      "id": "S13", "type": "single",
+      "title": "设 A、B 均为方阵且可逆，满足 AXB=C，则下列命题中正确的是（ ）",
+      "options": ["X=A^{-1}B^{-1}C", "X=CA^{-1}B^{-1}", "X=A^{-1}CB^{-1}", "X=B^{-1}CA^{-1}"],
+      "answer": "C",
+      "source": "高职线性代数100题 Q30"
+    },
+    {
+      "id": "S14", "type": "single",
+      "title": "设 n 阶可逆矩阵 A、B、C 满足 ABC=E，则 B=（ ）",
+      "options": ["A^{-1}C^{-1}", "C^{-1}A^{-1}", "AC", "CA"],
+      "answer": "A",
+      "source": "高职线性代数100题 Q31"
+    },
+    {
+      "id": "S15", "type": "single",
+      "title": "设 A 为 m×n 矩阵，则齐次线性方程组 Ax=0 只有零解的充要条件是（ ）",
+      "options": ["A 的列向量组线性无关", "A 的列向量组线性相关", "A 的行向量组线性无关", "A 的行向量组线性相关"],
+      "answer": "A",
+      "source": "高职线性代数100题 Q38"
+    },
+    {
+      "id": "S16", "type": "single",
+      "title": "非齐次线性方程组 { x1-2x2+x3=-2; -2x1+x2+x3=-2; x1+x2-2x3=4 } 的系数矩阵的秩和增广矩阵的秩相等且为 2，则该方程组（ ）",
+      "options": ["只有零解", "有无穷多组解", "有唯一的非零解", "无解"],
+      "answer": "B",
+      "source": "高职线性代数100题 Q40"
+    },
+    {
+      "id": "C01", "type": "completion",
+      "title": "已知 P(A)=1/4，P(A∪B)=1/3，且 A∩B=∅，求 P(B)。",
+      "answer": "1/12",
+      "source": "概率论期末试卷 填空1"
+    },
+    {
+      "id": "C02", "type": "completion",
+      "title": "盒中有 4 颗牛奶糖、6 颗巧克力糖，共 10 颗。不放回取两颗，求至少有一颗是牛奶糖的概率。",
+      "answer": "2/3",
+      "source": "概率论期末试卷 填空2"
+    },
+    {
+      "id": "C03", "type": "completion",
+      "title": "设随机变量 X 的分布函数为 F(x)=0（x<-1）；0.7（-1≤x<0）；0.9（0≤x<1）；1（x≥1）。求 P(|X|=1)。",
+      "answer": "0.8",
+      "source": "概率论期末试卷 填空3"
+    },
+    {
+      "id": "C04", "type": "completion",
+      "title": "设 X~N(1,4)，Y~U[0,4]，且 X 与 Y 相互独立，求 D(2X-3Y)。",
+      "answer": "28",
+      "source": "概率论期末试卷 填空4"
+    },
+    {
+      "id": "C05", "type": "completion",
+      "title": "样本数据为 147,153,149,152,151,148（n=6），求修正样本方差 s²。",
+      "answer": "5.6",
+      "source": "概率论期末试卷 填空5"
+    },
+    {
+      "id": "J01", "type": "judge",
+      "title": "若空间三个向量 a、b、c 不共面，则 a+b+c、a-b+c、a+2b+4c 也不共面。",
+      "answer": "正确",
+      "source": "USTC 2013-2014 第一学期 判断题(1)，本地验证：过渡矩阵行列式 -6≠0"
+    },
+    {
+      "id": "J02", "type": "judge",
+      "title": "对空间任意三个向量 a、b、c，必有 (a×b)×c = (a×c)×b。",
+      "answer": "错误",
+      "source": "USTC 2013-2014 第一学期 判断题(2)，本地验证：三重积展开不恒等"
+    },
+    {
+      "id": "J03", "type": "judge",
+      "title": "若齐次线性方程组 AX=0 有非零解，则非齐次线性方程组 AX=b（b≠0）必有无穷多组解。",
+      "answer": "错误",
+      "source": "USTC 2013-2014 第一学期 判断题(3)，本地验证：可能无解（A=0）"
+    },
+    {
+      "id": "J04", "type": "judge",
+      "title": "三维空间中，向量 a、b、c 共面的充要条件是 a+b、b+c、c+a 共面。",
+      "answer": "正确",
+      "source": "USTC 2013-2014 第二学期 判断题(1)，本地验证：变换矩阵行列式为 2"
+    },
+    {
+      "id": "J05", "type": "judge",
+      "title": "设 C = [[A,0],[0,B]]，其中 A、B 均为 n 阶可逆方阵，则 C 的伴随矩阵 C* = [[A*,0],[0,B*]]（* 表示伴随矩阵）。",
+      "answer": "错误",
+      "source": "USTC 2013-2014 第二学期 判断题(3)，本地验证：C* = diag(|B|A*, |A|B*)"
+    },
+    {
+      "id": "J06", "type": "judge",
+      "title": "设 A 为实对称方阵，若 A²=0，则 A=0。",
+      "answer": "正确",
+      "source": "USTC 2013-2014 第二学期 判断题(4)，本地验证：x^T A² x = ||Ax||²"
+    },
+    {
+      "id": "J07", "type": "judge",
+      "title": "若 A、B 均为 n 阶对称阵，则 AB 为对称阵的充要条件是 AB=BA。",
+      "answer": "正确",
+      "source": "USTC 2015-2016 第一学期 判断题(2)，本地验证：(AB)^T=BA"
+    },
+    {
+      "id": "J08", "type": "judge",
+      "title": "若 A 和 B 分别为 m×n 和 n×m 矩阵，则 rank(AB)=rank(BA)。",
+      "answer": "错误",
+      "source": "USTC 2015-2016 第一学期 判断题(5)，本地验证：反例 rank 0 vs 1"
+    },
+    {
+      "id": "M01", "type": "multiple",
+      "title": "设 A、B、C 为 n 阶方阵，下列命题中正确的是（ ）",
+      "options": ["(A+B)²=A²+2AB+B²", "(AB)^T=B^T A^T", "若 A 可逆，则 (A^T)^{-1}=(A^{-1})^T", "若 AB=AC 且 A≠O，则 B=C"],
+      "answer": "B#C",
+      "source": "本地自建，数学验证"
+    },
+    {
+      "id": "M02", "type": "multiple",
+      "title": "设 A 为 n 阶方阵，下列条件中能推出 A 可逆的是（ ）",
+      "options": ["|A|≠0", "A 的列向量组线性无关", "齐次线性方程组 Ax=0 只有零解", "A 的特征值全为 0"],
+      "answer": "A#B#C",
+      "source": "本地自建，数学验证"
+    },
+    {
+      "id": "M03", "type": "multiple",
+      "title": "设向量组 α1,…,αm（m>1），下列命题中正确的是（ ）",
+      "options": ["若向量组线性无关，则它的任意部分组线性无关", "若向量组线性相关，则其中任意一个向量都可由其余向量线性表示", "若向量组的秩等于 m，则向量组线性无关", "若向量组中有一部分向量线性相关，则整个向量组线性相关"],
+      "answer": "A#C#D",
+      "source": "本地自建，数学验证"
+    },
+    {
+      "id": "M04", "type": "multiple",
+      "title": "设 A 为 3 阶方阵，且 |A|=2，则下列结论正确的是（ ）",
+      "options": ["|2A|=16", "|A^{-1}|=1/2", "|A*|=4", "|A²|=2"],
+      "answer": "A#B#C",
+      "source": "本地自建，数学验证"
+    }
+  ]
+}

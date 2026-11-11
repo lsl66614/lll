@@ -1,0 +1,14 @@
+# 统一换行，避免 Windows 提交后 Linux 上全是 CRLF 差异
+* text=auto
+
+# 批处理是 GBK + CRLF，交给 git 转换会破坏中文，按二进制处理
+*.bat -text
+*.cmd -text
+
+# shell 脚本必须 LF，否则 macOS/Linux 上无法执行
+*.command text eol=lf
+*.sh text eol=lf
+
+*.png binary
+*.jpg binary
+*.db binary

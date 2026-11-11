@@ -1,0 +1,358 @@
+{
+  "summary": {
+    "generated": "2026-11-10 22:09:30",
+    "base_url": "http://127.0.0.1:8010",
+    "total_questions": 9,
+    "valid": 9,
+    "correct": 9,
+    "wrong": 0,
+    "failed": 0,
+    "accuracy_pct": 100.0,
+    "elapsed_s": 135.2,
+    "by_type": {
+      "single": {
+        "name": "单选",
+        "valid": 9,
+        "correct": 9,
+        "wrong": 0,
+        "failed": 0,
+        "accuracy_pct": 100.0
+      }
+    },
+    "by_group": {
+      "image-vision": {
+        "valid": 6,
+        "correct": 6,
+        "wrong": 0,
+        "failed": 0,
+        "accuracy_pct": 100.0
+      },
+      "image-ocr-vision": {
+        "valid": 3,
+        "correct": 3,
+        "wrong": 0,
+        "failed": 0,
+        "accuracy_pct": 100.0
+      }
+    },
+    "model_votes": 18
+  },
+  "results": [
+    {
+      "id": "I01",
+      "type": "single",
+      "group": "image-vision",
+      "expected": "D",
+      "got": "D",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 6.47,
+      "source": "高职线性代数100题 扫描件 Q1（文本层答案键）",
+      "detail": {
+        "answer": "D",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 6400,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "D": 2
+          },
+          "samples": 3,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": [
+            "3: 3：HTTP 429: 商汤小浣熊: 您的模型请求频率超限，请稍后重试"
+          ]
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "T01",
+      "type": "single",
+      "group": "image-ocr-vision",
+      "expected": "D",
+      "got": "D",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 3.37,
+      "source": "高职线性代数100题 扫描件 Q1（OCR 乱文 + 原图）",
+      "detail": {
+        "answer": "D",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 3354,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "D": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": [
+            "3: 3：HTTP 429: 商汤小浣熊: 您的模型请求频率超限，请稍后重试"
+          ]
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "I02",
+      "type": "single",
+      "group": "image-vision",
+      "expected": "C",
+      "got": "C",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 9.19,
+      "source": "高职线性代数100题 扫描件 Q5（文本层答案键）",
+      "detail": {
+        "answer": "C",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 9151,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "C": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "I03",
+      "type": "single",
+      "group": "image-vision",
+      "expected": "C",
+      "got": "C",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 15.33,
+      "source": "高职线性代数100题 扫描件 Q9（文本层答案键）",
+      "detail": {
+        "answer": "C",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 15289,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "C": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "T02",
+      "type": "single",
+      "group": "image-ocr-vision",
+      "expected": "C",
+      "got": "C",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 10.47,
+      "source": "高职线性代数100题 扫描件 Q9（OCR 乱文 + 原图）",
+      "detail": {
+        "answer": "C",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 10442,
+        "confidence": 0.97,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "C": 2
+          },
+          "samples": 3,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "I04",
+      "type": "single",
+      "group": "image-vision",
+      "expected": "D",
+      "got": "D",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 24.0,
+      "source": "高职线性代数100题 扫描件 Q10（文本层答案键）",
+      "detail": {
+        "answer": "D",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 23989,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "D": 2
+          },
+          "samples": 3,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": [
+            "3: 3：HTTP 429: 商汤小浣熊: 您的模型请求频率超限，请稍后重试"
+          ]
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "I05",
+      "type": "single",
+      "group": "image-vision",
+      "expected": "C",
+      "got": "C",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 13.33,
+      "source": "高职线性代数100题 扫描件 Q14（文本层答案键）",
+      "detail": {
+        "answer": "C",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 13287,
+        "confidence": 1.0,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "C": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": [
+            "3: 3：HTTP 429: 商汤小浣熊: 您的模型请求频率超限，请稍后重试"
+          ]
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "I06",
+      "type": "single",
+      "group": "image-vision",
+      "expected": "B",
+      "got": "B",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 12.46,
+      "source": "高职线性代数100题 扫描件 Q40（文本层答案键）",
+      "detail": {
+        "answer": "B",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 12422,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "B": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": []
+        },
+        "source": "ai"
+      }
+    },
+    {
+      "id": "T03",
+      "type": "single",
+      "group": "image-ocr-vision",
+      "expected": "B",
+      "got": "B",
+      "correct": true,
+      "code": 0,
+      "error": "",
+      "wall_s": 8.44,
+      "source": "高职线性代数100题 扫描件 Q40（OCR 乱文 + 原图）",
+      "detail": {
+        "answer": "B",
+        "provider": "1",
+        "consensus": "unit",
+        "share": 1.0,
+        "risk": false,
+        "scene": "unit",
+        "elapsed_ms": 8395,
+        "confidence": 0.99,
+        "cached": false,
+        "vote": {
+          "votes": {
+            "B": 2
+          },
+          "samples": 2,
+          "share": 1.0,
+          "rounds": 1,
+          "models": 2,
+          "errors": [
+            "3: 3：HTTP 429: 商汤小浣熊: 您的模型请求频率超限，请稍后重试"
+          ]
+        },
+        "source": "ai"
+      }
+    }
+  ]
+}
