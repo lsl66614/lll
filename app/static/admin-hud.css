@@ -4,12 +4,13 @@
    设计语言来自 docs/agent-hud-design-system（Agent HUD 0.6.0，运行时 CSSOM
    与官方源码双向核对）。这里是 /admin 的试点层，只做两件事：
 
-     1. 用 HUD 语义 token 覆盖旧的三层内联样式（基础层 + ui-v2 + ui-v3）；
+     1. 用 HUD 语义 token 覆盖 admin-legacy.css 中的三层旧样式
+        （基础层 + ui-v2 + ui-v3）；
      2. 为「总览」提供新的布局与组件（.hud-*），其余页面暂时沿用旧结构，
         但颜色、字体、圆角、控件尺寸会一起跟随这套 token。
 
-   下一阶段：把其余 section 迁到 .hud-* 组件，再删除 admin.html 里的
-   ui-v2 / ui-v3 内联样式。
+   下一阶段：把其余 section 迁到 .hud-* 组件，再删除 admin-legacy.css 里
+   已被取代的规则。
    ========================================================================== */
 
 /* ---------------------------------------------------------------- 1. token */
@@ -208,14 +209,6 @@ html[data-theme="light"] .sidebar { background: var(--hud-sidebar); }
 }
 
 .nav { gap: 1px; }
-.nav-label {
-  padding: 12px 8px 4px;
-  font: 500 10px/1.4 var(--hud-font);
-  letter-spacing: .04em;
-  color: var(--hud-fg-3);
-  text-transform: none;
-}
-.nav-label::after { background: var(--hud-border-soft); }
 
 /* 工作区折叠导航：顶层只露 总览 + 5 个工作区，同一时间只展开一个 */
 .nav-group { display: flex; flex-direction: column; gap: 1px; }
@@ -993,7 +986,6 @@ html[data-theme="light"] .palette { background: #fff; }
   body.nav-open .sidebar { transform: none; }
   .brand { border-bottom: 1px solid var(--hud-border-soft); padding: 2px 8px 14px; }
   .nav { flex-direction: column; gap: 1px; overflow: visible; }
-  .nav-label { display: flex; }
   .sidebar-foot {
     flex-direction: column;
     align-items: stretch;
