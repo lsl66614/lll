@@ -57,7 +57,7 @@ from .image_assets import ImageAssetStore
 from .option_images import annotate_options
 from .title_fill import find_full_title
 from .llm import ProviderError, call_provider, last_reasoning, last_usage, reset_usage
-from .batch_parse import parse_answer_array
+from .batch_parse import parse_answer_array, plan_batches
 from .feedback_feed import FeedbackFeed
 from .mooc_result import _answers_match, apply_feedback, parse_result_html
 from .mooc_rpc import parse_paper
@@ -215,6 +215,8 @@ class Stats:
         self.total = 0
         self.cached = 0
         self.cache_retry = 0
+        self.batch_requests = 0
+        self.batch_ai_calls = 0
         self.bank_hits = 0
         self.memory_hits = 0
         self.web_search = 0
@@ -240,6 +242,8 @@ class Stats:
             self.total = int(data.get("total") or 0)
             self.cached = int(data.get("cached") or 0)
             self.cache_retry = int(data.get("cache_retry") or 0)
+            self.batch_requests = int(data.get("batch_requests") or 0)
+            self.batch_ai_calls = int(data.get("batch_ai_calls") or 0)
             self.bank_hits = int(data.get("bank_hits") or 0)
             self.memory_hits = int(data.get("memory_hits") or 0)
             self.web_search = int(data.get("web_search") or 0)
@@ -268,6 +272,8 @@ class Stats:
                 "total": self.total,
                 "cached": self.cached,
                 "cache_retry": self.cache_retry,
+                "batch_requests": self.batch_requests,
+                "batch_ai_calls": self.batch_ai_calls,
                 "bank_hits": self.bank_hits,
                 "memory_hits": self.memory_hits,
                 "failovers": self.failovers,
@@ -565,27 +571,35 @@ _snapshot_hits: dict[str, deque] = {}
 _snapshot_hits_lock = threading.Lock()
 
 
-def _snapshot_rate_limited(key: str) -> bool:
-    """简单的滑动窗口限流：每个客户端每分钟最多 SNAPSHOT_RATE_LIMIT 次。"""
-    limit = int(config.SNAPSHOT_RATE_LIMIT or 0)
+def _rate_limited(
+    buckets: dict[str, deque], lock: threading.Lock, key: str, limit: int
+) -> bool:
+    """滑动窗口限流：每个 key 每分钟最多 limit 次；limit<=0 表示不限制。"""
     if limit <= 0:
         return False
     now = time.time()
     bucket = key or "-"
-    with _snapshot_hits_lock:
-        hits = _snapshot_hits.get(bucket)
+    with lock:
+        hits = buckets.get(bucket)
         if hits is None:
-            if len(_snapshot_hits) > 2000:
-                stale = [k for k, v in _snapshot_hits.items() if not v or now - v[-1] > 120]
+            if len(buckets) > 2000:
+                stale = [k for k, v in buckets.items() if not v or now - v[-1] > 120]
                 for name in stale:
-                    _snapshot_hits.pop(name, None)
-            hits = _snapshot_hits[bucket] = deque()
+                    buckets.pop(name, None)
+            hits = buckets[bucket] = deque()
         while hits and now - hits[0] > 60:
             hits.popleft()
         if len(hits) >= limit:
             return True
         hits.append(now)
         return False
+
+
+def _snapshot_rate_limited(key: str) -> bool:
+    """每个客户端每分钟最多 SNAPSHOT_RATE_LIMIT 次。"""
+    return _rate_limited(
+        _snapshot_hits, _snapshot_hits_lock, key, int(config.SNAPSHOT_RATE_LIMIT or 0)
+    )
 
 
 app = FastAPI(title="OCS AI 网关", version="1.0.0", docs_url="/docs")
@@ -2290,6 +2304,62 @@ def _record_snapshot_answer(snapshot: dict[str, Any], response: JSONResponse) ->
         pass
 
 
+def _record_answer(
+    *,
+    qtype_raw: Any,
+    title: str,
+    options_raw: Any,
+    answer: str,
+    data: dict[str, Any],
+    subject: Any = None,
+    context: Any = None,
+    images: list[str] | None = None,
+) -> None:
+    """把一次真实答案记账：清掉未答记录 + 写答题记忆。
+
+    单题 ``_resolve`` 与批量接口共用同一份逻辑，避免两套账本对不上。
+    """
+    record_title = str(title or "").strip()[: config.MAX_TITLE_LENGTH]
+    record_options = parse_options(options_raw)[: config.MAX_OPTIONS_COUNT]
+    if not answer or not record_title:
+        return
+    # 这道题已经答出来了：把「未答题目」里对应的失败记录收掉。
+    try:
+        failures.resolve(
+            record_title,
+            [str(option)[: config.MAX_TITLE_LENGTH] for option in record_options],
+        )
+    except Exception:  # noqa: BLE001 - 清理失败记录不影响答题
+        pass
+    confidence = data.get("confidence")
+    record_meta: dict[str, Any] = {}
+    web_sources = data.get("web_sources")
+    if isinstance(web_sources, list) and web_sources:
+        record_meta["web_sources"] = web_sources[:5]
+    try:
+        answer_memory.record(
+            qtype=qtype_raw,
+            title=record_title,
+            options=record_options,
+            answer=answer,
+            source=str(data.get("source") or ""),
+            provider=str(data.get("provider") or ""),
+            strategy=_memory_strategy(data),
+            subject=str(data.get("subject") or _pick_subject(
+                subject, record_title, record_options) or ""),
+            scene=str(data.get("scene") or scene_state.get()
+                      or _infer_scene(context) or ""),
+            image_hash=_hash_images(images) if images else "",
+            confidence=confidence if isinstance(confidence, (int, float)) else None,
+            risk=bool(data.get("risk")),
+            match=str(data.get("match") or ""),
+            elapsed_ms=int(data.get("elapsed_ms") or 0),
+            meta=record_meta or None,
+        )
+    except Exception:  # noqa: BLE001 - 记忆写失败不影响已经生成的答案
+        pass
+
+
 async def _resolve(
     title: str,
     qtype_raw: str | None,
@@ -2315,43 +2385,17 @@ async def _resolve(
         payload = json.loads(response.body.decode("utf-8"))
         data = payload.get("data") if isinstance(payload, dict) else None
         if isinstance(payload, dict) and payload.get("code") == 0 and isinstance(data, dict):
-            answer = str(data.get("answer") or "").strip()
-            record_title = str(title or "").strip()[: config.MAX_TITLE_LENGTH]
-            record_options = parse_options(options_raw)[: config.MAX_OPTIONS_COUNT]
-            if answer and record_title:
-                # 这道题已经答出来了：把「未答题目」里对应的失败记录收掉。
-                try:
-                    failures.resolve(
-                        record_title,
-                        [str(o)[: config.MAX_TITLE_LENGTH] for o in record_options],
-                    )
-                except Exception:  # noqa: BLE001 - 清理失败记录不影响答题
-                    pass
-                confidence = data.get("confidence")
-                record_meta: dict[str, Any] = {}
-                web_sources = data.get("web_sources")
-                if isinstance(web_sources, list) and web_sources:
-                    record_meta["web_sources"] = web_sources[:5]
-                answer_memory.record(
-                    qtype=qtype_raw,
-                    title=record_title,
-                    options=record_options,
-                    answer=answer,
-                    source=str(data.get("source") or ""),
-                    provider=str(data.get("provider") or ""),
-                    strategy=_memory_strategy(data),
-                    subject=str(data.get("subject") or _pick_subject(
-                        subject, record_title, record_options) or ""),
-                    scene=str(data.get("scene") or scene_state.get()
-                              or _infer_scene(context) or ""),
-                    image_hash=_hash_images(images) if images else "",
-                    confidence=confidence if isinstance(confidence, (int, float)) else None,
-                    risk=bool(data.get("risk")),
-                    match=str(data.get("match") or ""),
-                    elapsed_ms=int(data.get("elapsed_ms") or 0),
-                    meta=record_meta or None,
-                )
-    except Exception:  # noqa: BLE001 - 记忆写失败不影响已经生成的答案
+            _record_answer(
+                qtype_raw=qtype_raw,
+                title=title,
+                options_raw=options_raw,
+                answer=str(data.get("answer") or "").strip(),
+                data=data,
+                subject=subject,
+                context=context,
+                images=images,
+            )
+    except Exception:  # noqa: BLE001 - 记账失败不影响已经生成的答案
         pass
     return response
 
@@ -2838,6 +2882,290 @@ async def ocs_search(request: Request) -> JSONResponse:
     return JSONResponse(
         [[str(data.get("question") or ""), str(data.get("answer")), data]], status_code=200
     )
+
+
+_BATCH_MAX_REQUEST_ITEMS = 30
+_batch_hits: dict[str, deque] = {}
+_batch_hits_lock = threading.Lock()
+
+
+def _batch_rate_limited(key: str) -> bool:
+    return _rate_limited(
+        _batch_hits, _batch_hits_lock, key, int(config.BATCH_RATE_LIMIT or 0)
+    )
+
+
+def _batch_result(
+    qid: str,
+    answer: str,
+    confidence: Any,
+    source: str,
+    provider: str,
+    cached: bool,
+    error: str = "",
+    elapsed_ms: int = 0,
+) -> dict[str, Any]:
+    return {
+        "id": qid,
+        "answer": answer,
+        "confidence": confidence,
+        "source": source,
+        "provider": provider,
+        "cached": cached,
+        "elapsed_ms": elapsed_ms,
+        "error": error,
+    }
+
+
+def _batch_normalize(body: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+    """校验并入参规范化；返回 ``(items, error)``，error 非空表示整批拒绝。"""
+    raw_items = body.get("items")
+    if not isinstance(raw_items, list) or not raw_items:
+        return [], "items 不能为空"
+    if len(raw_items) > _BATCH_MAX_REQUEST_ITEMS:
+        return [], f"单次最多 {_BATCH_MAX_REQUEST_ITEMS} 题"
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(raw_items, 1):
+        if not isinstance(raw, dict):
+            return [], f"第 {index} 题不是对象"
+        qid = str(raw.get("id") or "").strip()
+        if not qid:
+            return [], f"第 {index} 题缺少 id"
+        if qid in seen:
+            return [], f"id 重复：{qid}"
+        seen.add(qid)
+        title = str(raw.get("title") or "").strip()
+        if not title:
+            return [], f"题目 {qid} 缺少 title"
+        qtype_raw = raw.get("type")
+        qtype = normalize_type(qtype_raw)
+        if qtype is None:
+            return [], f"题目 {qid} 的题型无法识别：{qtype_raw}"
+        items.append({
+            "id": qid,
+            "type": qtype,
+            "qtype_raw": qtype_raw,
+            "title": title[: config.MAX_TITLE_LENGTH],
+            "options": parse_options(raw.get("options"))[: config.MAX_OPTIONS_COUNT],
+            "images": _parse_images(raw.get("images")),
+            "subject": raw.get("subject"),
+            "context": str(raw.get("context") or ""),
+        })
+    return items, ""
+
+
+def _batch_cheap_hit(
+    item: dict[str, Any], opts: dict[str, Any]
+) -> dict[str, Any] | None:
+    """按单题链路的优先级查题库 → 记忆 → 缓存，全部免费。"""
+    qid = item["id"]
+    title = item["title"]
+    options = item["options"]
+    subject = _pick_subject(item.get("subject"), title, options)
+    qtype_raw = item.get("qtype_raw")
+    try:
+        local = bank.find_exact(qtype_raw, title, options, subject)
+    except Exception:  # noqa: BLE001 - 查库失败按未命中处理
+        local = None
+    if local and str(local.get("status") or "") != "pending":
+        answer = str(local.get("answer") or "").strip()
+        if answer:
+            return _batch_result(
+                qid, answer, local.get("confidence"), "bank", "题库", True
+            )
+    try:
+        memory_hit = answer_memory.recall(
+            qtype=qtype_raw, title=title, options=options,
+            subject=subject, image_hash="",
+        )
+    except Exception:  # noqa: BLE001 - 记忆检索失败按未命中处理
+        memory_hit = None
+    if memory_hit and str(memory_hit.get("answer") or "").strip():
+        return _batch_result(
+            qid, str(memory_hit["answer"]), memory_hit.get("confidence"),
+            "memory", "答题记忆", True,
+        )
+    key = cache.make_key(item["type"], title, options, None, subject, item.get("context"))
+    hit, _retried = cache.lookup_for_answer(
+        key,
+        float(opts.get("cache_retry_probability") or 0),
+        float(opts.get("cache_retry_min_confidence") or 0),
+    )
+    if hit and str(hit.get("answer") or "").strip():
+        return _batch_result(
+            qid, str(hit["answer"]), hit.get("confidence"),
+            str(hit.get("source") or "ai"), str(hit.get("provider") or ""), True,
+        )
+    return None
+
+
+async def _batch_single(item: dict[str, Any]) -> dict[str, Any]:
+    """带图片的题走完整单题链路：批量视觉输入更容易串题。"""
+    payload: Any = None
+    response = await _resolve(
+        item["title"], item.get("qtype_raw"), item["options"], item["images"],
+        subject=item.get("subject"), context=item.get("context"),
+    )
+    try:
+        payload = json.loads(response.body.decode("utf-8"))
+        data = payload.get("data") if isinstance(payload, dict) else None
+    except (ValueError, UnicodeDecodeError):
+        data = None
+    if (
+        isinstance(payload, dict)
+        and payload.get("code") == 0
+        and isinstance(data, dict)
+        and data.get("answer")
+    ):
+        return _batch_result(
+            item["id"], str(data["answer"]), data.get("confidence"),
+            str(data.get("source") or "ai"), str(data.get("provider") or ""),
+            bool(data.get("cached")), "", int(data.get("elapsed_ms") or 0),
+        )
+    message = str((payload or {}).get("msg") or "单题求解失败") \
+        if isinstance(payload, dict) else "单题求解失败"
+    return _batch_result(item["id"], "", None, "", "", False, message)
+
+
+async def _batch_fill_ai(
+    items: list[dict[str, Any]], results: dict[str, dict[str, Any]]
+) -> int:
+    """按 provider 顺序批量补答；返回实际 AI 调用次数。"""
+    if not items:
+        return 0
+    remaining = list(items)
+    calls = 0
+    for provider in _unit_ready(store.enabled())[:2]:
+        if not remaining:
+            break
+        resolved, missing, elapsed, _error = await _call_batch_one(provider, remaining)
+        calls += 1
+        stats.bump("batch_ai_calls")
+        by_id = {item["id"]: item for item in remaining}
+        for qid, payload in resolved.items():
+            item = by_id.get(qid)
+            if item is None:
+                continue
+            answer = str(payload.get("answer") or "")
+            confidence = payload.get("confidence")
+            subject = _pick_subject(item.get("subject"), item["title"], item["options"])
+            key = cache.make_key(
+                item["type"], item["title"], item["options"], None, subject,
+                item.get("context"),
+            )
+            cache.set(
+                key, item["title"], answer, provider["name"], item["type"],
+                json.dumps(item["options"], ensure_ascii=False), subject, "",
+                source="ai", confidence=confidence,
+            )
+            _record_answer(
+                qtype_raw=item.get("qtype_raw"),
+                title=item["title"],
+                options_raw=item["options"],
+                answer=answer,
+                data={
+                    "answer": answer,
+                    "confidence": confidence,
+                    "source": "ai",
+                    "provider": provider["name"],
+                    "elapsed_ms": elapsed,
+                    "match": "batch",
+                },
+                subject=item.get("subject"),
+                context=item.get("context"),
+                images=None,
+            )
+            results[qid] = _batch_result(
+                qid, answer, confidence, "ai", provider["name"], False, "", elapsed
+            )
+        missing_set = set(missing)
+        remaining = [item for item in remaining if item["id"] in missing_set]
+    for item in remaining:
+        results[item["id"]] = _batch_result(
+            item["id"], "", None, "", "", False, "no_answer"
+        )
+    return calls
+
+
+@app.post("/api/batch/query")
+async def api_batch_query(request: Request) -> JSONResponse:
+    """批量答题 / 预取。``BATCH_ENABLED=0`` 时返回 404。"""
+    if not (config.BATCH_ENABLED or bool(settings.all().get("batch_enabled"))):
+        return JSONResponse(
+            {"code": 40401, "msg": "批量接口未启用（设置 BATCH_ENABLED=1 后可用）"},
+            status_code=404,
+        )
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, ValueError):
+        body = None
+    if not isinstance(body, dict):
+        return JSONResponse(
+            {"code": 40000, "msg": "请求体必须是 JSON 对象"}, status_code=400
+        )
+    _require_ingest_token(request, body)
+    client = request.client.host if request.client else "-"
+    if _batch_rate_limited(client):
+        return JSONResponse(
+            {"code": 42901, "msg": "批量请求过于频繁，稍后再试"}, status_code=429
+        )
+    mode = str(body.get("mode") or "answer").strip().lower()
+    if mode not in ("answer", "prefetch"):
+        return JSONResponse(
+            {"code": 40002, "msg": "mode 只能是 answer 或 prefetch"}, status_code=400
+        )
+    items, error = _batch_normalize(body)
+    if error:
+        return JSONResponse({"code": 40003, "msg": error}, status_code=400)
+
+    started = time.perf_counter()
+    opts = settings.all()
+    results: dict[str, dict[str, Any]] = {}
+    pending: list[dict[str, Any]] = []
+    for item in items:
+        if item["images"]:
+            results[item["id"]] = await _batch_single(item)
+            continue
+        hit = _batch_cheap_hit(item, opts)
+        if hit:
+            results[item["id"]] = hit
+        else:
+            pending.append(item)
+
+    ai_calls = 0
+    for chunk in plan_batches(pending):
+        ai_calls += await _batch_fill_ai(chunk, results)
+
+    ordered = [results[item["id"]] for item in items if item["id"] in results]
+    cached_count = sum(1 for row in ordered if row["cached"])
+    answered = sum(1 for row in ordered if row["answer"] and not row["cached"])
+    failed = sum(1 for row in ordered if not row["answer"])
+    stats.bump("total", len(items))
+    stats.bump("cached", cached_count)
+    stats.bump("batch_requests")
+
+    if mode == "prefetch":
+        ordered = [
+            {"id": row["id"], "ok": bool(row["answer"]), "cached": row["cached"],
+             "source": row["source"], "error": row["error"]}
+            for row in ordered
+        ]
+    return JSONResponse({
+        "code": 0,
+        "data": {
+            "mode": mode,
+            "results": ordered,
+            "stats": {
+                "total": len(items),
+                "cached": cached_count,
+                "answered": answered,
+                "failed": failed,
+                "ai_calls": ai_calls,
+                "elapsed_ms": int((time.perf_counter() - started) * 1000),
+            },
+        },
+    })
 
 
 @app.post("/api/ocs/scan-config")

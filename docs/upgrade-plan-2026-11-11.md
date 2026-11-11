@@ -421,3 +421,45 @@ def get_for_answer(self, key: str) -> dict | None
 - 复用 `_singleflight` 与 `cache.set` / `answer_memory.record` / `failures.resolve`，
   把记账逻辑抽成 `_record_answer()` 供单题/批量共用；
 - 新增 `tests/test_batch_api.py`（≥ 8 例）。
+
+## 18. D6-D7 执行记录（2026-11-11，已完成）
+
+### 已落地
+
+| 项 | 文件 | 说明 |
+|---|---|---|
+| 批量接口 | `app/main.py:3092` | `POST /api/batch/query`，`answer` / `prefetch` 双模；`BATCH_ENABLED=0` → 404 |
+| 入参校验 | `app/main.py:2920` | 1~30 题、id 必填且不重复、title 非空、题型必须可识别；错误 400 |
+| 便宜路径 | `app/main.py:2958` | 题库 `find_exact` → 记忆 `recall` → 缓存 `lookup_for_answer`（与单题优先级一致） |
+| 批量补答 | `app/main.py:3031` | `plan_batches` 分片 → 最多 2 个 provider 依次补答 → 写缓存 + 记账 |
+| 记账复用 | `app/main.py:2307` | `_record_answer()` 从 `_resolve` 抽出，单题/批量共用 `failures.resolve` + `answer_memory.record` |
+| 限流 | `app/main.py:574` | `_rate_limited()` 通用滑动窗口；快照与批量共用，批量默认 10 次/分钟 |
+| 统计 | `Stats` | 新增 `batch_requests` / `batch_ai_calls`，随 `stats.json` 持久化 |
+
+### 行为约定
+
+- **按 id 对齐**：结果数组顺序与请求一致；`prefetch` 模式剥离 `answer` 字段，只回
+  `{id, ok, cached, source, error}`。
+- 图片题**不批量**：直接走 `_resolve` 单题完整链路，避免批量视觉输入串题。
+- 批量结果写回缓存（`source="ai"` + 本次置信度），之后官方脚本逐题请求即可命中。
+- 部分失败返回 200 + 每题 `error`，不抛 500；整批未答的题标 `no_answer`。
+- 鉴权走 `_require_ingest_token`（请求头或 body token），401 由 FastAPI 返回。
+
+### 已知边界（实测）
+
+- 批量路径**不查官方答案**：官方校验仍是单题链路的前置步骤，下一次单题请求仍会先查官方，
+  因此缓存里的 AI 答案不会挡住官方答案。
+- 预取与单题请求同时解同一题时可能重复调用 AI（没有按题加单飞锁），只影响成本不影响正确性。
+
+### 测试（实测）
+
+- 新增 `tests/test_batch_api.py` 12 例：开关 404、token 401、空 items、重复 id、
+  未知题型、超 30 题、缓存命中、prefetch 不泄露答案、题库优先于缓存、AI 写缓存、
+  AI 失败标 `no_answer`、限流 429。
+- 全量：`python -m unittest discover -s tests` → **565 tests OK**。
+
+### 待办（D8）
+
+- userscript「本页预取 N 题」按钮（`mode=prefetch`）与进度提示；
+- trace 批次分组（`batch_id` / `item_id`）与 `/trace` 页展示；
+- `docs/api-batch.md`、README 一节、灰度开关说明。
