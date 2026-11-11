@@ -167,6 +167,27 @@ class TraceStoreTests(unittest.TestCase):
         self.store.set_vote(object())
         self.assertIsNotNone(self.store.recent())
 
+    def test_batch_fields_and_filter(self):
+        batch = self.store.begin(
+            title="批量 2 题",
+            qtype="batch",
+            batch_id="b1",
+            batch_items=[{"id": "q1", "answer": "A"}],
+        )
+        batch.finish(result={"items": 2, "resolved": 1})
+        single = self.store.begin(title="单题")
+        single.finish(result={"answer": "B"})
+
+        payload = self.store.recent(limit=5, batch_id="b1")
+        self.assertEqual(len(payload["traces"]), 1)
+        row = payload["traces"][0]
+        self.assertEqual(row["batch_id"], "b1")
+        self.assertEqual(row["batch_items"][0]["id"], "q1")
+        self.assertEqual(row["qtype"], "batch")
+
+        self.assertEqual(self.store.recent(limit=5, batch_id="nope")["traces"], [])
+        self.assertEqual(len(self.store.recent(limit=5)["traces"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

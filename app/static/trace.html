@@ -172,6 +172,24 @@ section.view { min-height: 0; overflow-y: auto; padding: 20px 26px 56px; }
 .item .l2 .sep { opacity: .35; }
 .item .l2 .ms { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+.batchhead {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px 6px 11px; cursor: pointer;
+  background: rgba(216, 255, 62, .026);
+  border-bottom: 1px solid var(--line-soft);
+  font: 9px/1.5 var(--mono); letter-spacing: .1em; color: var(--muted);
+  transition: background .12s;
+}
+.batchhead::before { content: ""; width: 6px; height: 6px; background: var(--acid); flex: none; }
+.batchhead .bid { letter-spacing: .02em; color: var(--muted); }
+.batchhead.cont { background: transparent; padding-top: 4px; padding-bottom: 4px; }
+.batchhead.cont::before { background: var(--line-strong); }
+.batchhead .bcount { color: var(--dim); letter-spacing: .04em; }
+.batchhead .bshow { margin-left: auto; color: var(--dim); font-size: 9px; letter-spacing: .04em; }
+.batchhead:hover { background: rgba(216, 255, 62, .05); }
+.batchhead.on { background: rgba(216, 255, 62, .075); }
+.batchhead.on .bshow { color: var(--acid); }
+
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
   font: 9px/1.5 var(--mono); letter-spacing: .05em; color: var(--dim);
@@ -428,11 +446,11 @@ aside.right .card h3::before { background: var(--line-strong); }
   margin-top: 8px; letter-spacing: .04em; opacity: .8;
 }
 
-#detail > * { animation: rise .32s cubic-bezier(.2, .7, .3, 1) both; }
-#detail > *:nth-child(2) { animation-delay: .04s; }
-#detail > *:nth-child(3) { animation-delay: .08s; }
-#detail > *:nth-child(4) { animation-delay: .12s; }
-#detail > *:nth-child(5) { animation-delay: .16s; }
+#detail:not(.settled) > * { animation: rise .32s cubic-bezier(.2, .7, .3, 1) both; }
+#detail:not(.settled) > *:nth-child(2) { animation-delay: .04s; }
+#detail:not(.settled) > *:nth-child(3) { animation-delay: .08s; }
+#detail:not(.settled) > *:nth-child(4) { animation-delay: .12s; }
+#detail:not(.settled) > *:nth-child(5) { animation-delay: .16s; }
 @keyframes rise {
   from { opacity: 0; transform: translateY(7px); }
   to { opacity: 1; transform: none; }
@@ -454,6 +472,26 @@ aside.right .card h3::before { background: var(--line-strong); }
   white-space: normal; word-break: break-word; overflow-wrap: anywhere;
 }
 .solve .opt-line b { color: var(--acid); font-weight: 500; margin-right: 6px; }
+.solve .btable {
+  margin-top: 16px; border: 1px solid var(--line-soft);
+  font: 11px/1.6 var(--mono);
+}
+.solve .brow {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) 62px 56px;
+  gap: 10px; align-items: baseline;
+  padding: 6px 10px; border-top: 1px solid var(--line-soft);
+}
+.solve .brow:first-child { border-top: 0; }
+.solve .brow.bhead {
+  color: var(--dim); font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
+  background: rgba(255, 255, 255, .018);
+}
+.solve .brow .bidx { color: var(--dim); }
+.solve .brow .btitle {
+  color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.solve .brow .bans { color: var(--acid); font-weight: 500; text-align: center; }
+.solve .brow .bconf { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 .recv { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 14px; }
 .recv-lab {
   font: 9px/1 var(--mono); letter-spacing: .16em; color: var(--dim);
@@ -494,17 +532,68 @@ aside.right .card h3::before { background: var(--line-strong); }
   max-height: 320px; overflow-y: auto;
 }
 .reason.none { color: var(--dim); border-left-color: var(--line); }
-.final {
-  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line);
-  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+
+/* ---------------------------------------------------------------- verdict */
+.verdict {
+  padding: 14px 16px 13px; margin-bottom: 14px;
+  border: 1px solid var(--line-strong); border-left: 2px solid var(--acid);
+  background: var(--bg-elev);
 }
-.final .lab {
+.verdict.tone-err { border-left-color: var(--red); }
+.verdict.tone-run { border-left-color: var(--amber); }
+.verdict .v-main { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.verdict .v-lab {
   font: 9px/1 var(--mono); letter-spacing: .18em; color: var(--dim);
   text-transform: uppercase;
 }
-.final .val { font: 26px/1 var(--mono); color: var(--acid); letter-spacing: .04em; }
-.final .val.long { font: 15px/1.65 var(--sans); letter-spacing: .01em; }
-.final .src { font: 9.5px/1.4 var(--mono); color: var(--dim); }
+.verdict .v-ans { font: 28px/1 var(--mono); color: var(--acid); letter-spacing: .04em; }
+.verdict .v-ans.long { font: 15px/1.65 var(--sans); letter-spacing: .01em; }
+.verdict.tone-err .v-ans { color: var(--red); }
+.verdict.tone-run .v-ans { color: var(--muted); }
+.verdict .v-src { font: 9.5px/1.4 var(--mono); color: var(--dim); }
+.verdict .v-facts {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px;
+  color: var(--muted); font: 9.5px/1.5 var(--mono); letter-spacing: .03em;
+}
+.verdict .v-risk {
+  margin-top: 10px; padding: 6px 10px; border-left: 2px solid var(--line-strong);
+  font: 10px/1.7 var(--mono); color: var(--muted);
+}
+.verdict .v-risk.err { border-left-color: var(--red); color: var(--red); }
+.verdict .v-risk.warn { border-left-color: var(--amber); color: var(--amber); }
+.verdict .v-risk.ok { border-left-color: var(--green); color: var(--green); }
+
+/* ---------------------------------------------------------------- chain */
+.chain { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
+.chain li {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 5px 10px 5px 0; color: var(--dim);
+  font: 9.5px/1.4 var(--mono); letter-spacing: .03em;
+}
+.chain li + li::before { content: "›"; color: var(--line-strong); margin-right: 6px; }
+.chain li i { width: 5px; height: 5px; background: var(--line-strong); flex: none; transform: translateY(-1px); }
+.chain li b { color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+.chain li span { color: var(--dim); max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chain li.ok i { background: var(--green); }
+.chain li.ok span { color: var(--muted); }
+.chain li.run i { background: var(--acid); }
+.chain li.warn i { background: var(--amber); }
+.chain li.err i { background: var(--red); }
+.chain li.err b, .chain li.err span { color: var(--red); }
+.chain li.hit i { background: var(--acid); box-shadow: 0 0 0 2px rgba(216, 255, 62, .16); }
+.chain li.hit b, .chain li.hit span { color: var(--acid); }
+
+/* ---------------------------------------------------------------- step as details */
+.card.steps .steps { margin-top: 0; }
+details.step > summary { list-style: none; cursor: pointer; }
+details.step > summary::-webkit-details-marker { display: none; }
+details.step > summary::before { content: "+"; color: var(--acid); font: 10px/1 var(--mono); }
+details.step[open] > summary::before { content: "−"; }
+details.step > summary:hover .sname { color: var(--acid); }
+details.step.warn > summary::before { color: var(--amber); }
+details.step.err > summary::before { color: var(--red); }
+details.step[open] { padding-bottom: 16px; }
+.empty-note { color: var(--dim); font: 11px/1.8 var(--mono); }
 .deep { border-top: 1px solid var(--line); margin-top: 6px; }
 .deep > summary {
   cursor: pointer; list-style: none; padding: 12px 0; color: var(--dim);
@@ -621,7 +710,7 @@ aside.right .card h3::before { background: var(--line-strong); }
   var state = {
     traces: [], selected: null, follow: true, paused: false,
     latest: 0, seenLatest: 0, lastSig: '',
-    source: 'all', status: 'all', sort: 'new', query: ''
+    source: 'all', status: 'all', sort: 'new', query: '', batch: ''
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -729,6 +818,9 @@ aside.right .card h3::before { background: var(--line-strong); }
       var q = state.query.toLowerCase();
       list = list.filter(function (t) { return String(t.title || '').toLowerCase().indexOf(q) >= 0; });
     }
+    if (state.batch) {
+      list = list.filter(function (t) { return t.batch_id === state.batch; });
+    }
     if (state.sort === 'slow') {
       list.sort(function (a, b) { return (Number(b.elapsed_ms) || 0) - (Number(a.elapsed_ms) || 0); });
     } else if (state.sort === 'tokens') {
@@ -740,29 +832,151 @@ aside.right .card h3::before { background: var(--line-strong); }
   function renderList() {
     var list = visibleTraces();
     if (!list.length) {
-      $('list').innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 6px;line-height:1.7">没有符合条件的轨迹。</div>';
-      $('listCount').textContent = state.traces.length + ' / ' + state.latest;
+      var empty = '<div style="color:var(--dim);font-size:11px;padding:12px 6px;line-height:1.7">没有符合条件的轨迹。</div>';
+      if (state.batch) {
+        empty += '<div class="batchhead on" data-batch="' + esc(state.batch) + '" title="清除批次筛选">批次 <span class="bid">' +
+          esc(state.batch) + '</span><span class="bshow">清除筛选</span></div>';
+      }
+      $('list').innerHTML = empty;
+      $('listCount').textContent = '0 / ' + state.latest + (state.batch ? ' · 已筛批次' : '');
       return;
     }
-    $('list').innerHTML = list.map(function (t) {
+    var counts = {};
+    list.forEach(function (t) {
+      if (t.batch_id) counts[t.batch_id] = (counts[t.batch_id] || 0) + 1;
+    });
+    var lastBatch = null;
+    var seenBatch = {};
+    var parts = [];
+    list.forEach(function (t) {
+      if (t.batch_id && t.batch_id !== lastBatch) {
+        var on = state.batch === t.batch_id;
+        var cont = seenBatch[t.batch_id] ? ' cont' : '';
+        seenBatch[t.batch_id] = true;
+        parts.push('<div class="batchhead' + cont + (on ? ' on' : '') + '" data-batch="' +
+          esc(t.batch_id) + '" title="点击查看该批次">' + (cont ? '续 · 批次 ' : '批次 ') + '<span class="bid">' +
+          esc(t.batch_id) + '</span><span class="bcount">' + counts[t.batch_id] + ' 题</span>' +
+          '<span class="bshow">' + (on ? '清除筛选' : '只看本批') + '</span></div>');
+      }
+      lastBatch = t.batch_id || null;
       var sel = state.selected && state.selected.id === t.id ? ' sel' : '';
       var tone = t.status === 'running' ? 'run' : (t.status === 'error' ? 'err' : 'ok');
       var src = t.result && t.result.source ? t.result.source : '';
       var tokens = t.total_tokens ? num(t.total_tokens) + ' tok' : '';
-      return '<div class="item' + sel + '" data-id="' + esc(t.id) + '">' +
+      parts.push('<div class="item' + sel + '" data-id="' + esc(t.id) + '">' +
         '<div class="l1"><span class="dot-status ' + tone + '"></span>' +
         '<span class="seq">#' + t.seq + '</span>' +
         '<span class="title" title="' + esc(t.title) + '">' + esc(t.title || '（无题干）') + '</span></div>' +
         '<div class="l2">' + badge(srcLabel(t), t.status === 'running' ? 'run' : (t.status === 'error' ? 'err' : srcClass(src))) +
         (t.models && t.models.length ? '<span>' + t.models.length + ' 模型</span>' : '') +
         (tokens ? '<span class="sep">·</span><span>' + esc(tokens) + '</span>' : '') +
-        '<span class="ms">' + ms(t.elapsed_ms) + '</span></div></div>';
-    }).join('');
-    $('listCount').textContent = list.length + ' / ' + state.latest;
+        '<span class="ms">' + ms(t.elapsed_ms) + '</span></div></div>');
+    });
+    $('list').innerHTML = parts.join('');
+    $('listCount').textContent = list.length + ' / ' + state.latest + (state.batch ? ' · 已筛批次' : '');
   }
 
   /* ---------------------------------------------------------------- solve */
-  function renderSolve(t) {
+  function answerOf(t) {
+    var r = t.result || {};
+    if (r.answer) return String(r.answer);
+    return t.status === 'running' ? '…' : '—';
+  }
+
+  /* 结论置顶：答案、来源、置信度、耗时一行看完，不用滚到底。 */
+  function renderVerdictBar(t) {
+    var r = t.result || {};
+    var ans = answerOf(t);
+    var tone = t.status === 'error' ? 'err' : (t.status === 'running' ? 'run' : 'ok');
+    var facts = [];
+    if (r.confidence != null) facts.push('置信度 ' + Number(r.confidence).toFixed(2));
+    if (r.consensus) facts.push('共识 ' + r.consensus);
+    if (r.match) facts.push('匹配 ' + r.match);
+    if (r.cached) facts.push('缓存命中');
+    if ((t.models || []).length) facts.push(t.models.length + ' 个模型');
+    if ((t.batch_items || []).length) facts.push('同批 ' + t.batch_items.length + ' 题');
+    facts.push('耗时 ' + ms(t.elapsed_ms));
+    if (t.total_tokens) facts.push(num(t.total_tokens) + ' tok');
+    var risk = '';
+    if (t.status === 'error') risk = '<div class="v-risk err">' + esc(t.error || '请求失败') + '</div>';
+    else if (r.risk === true) risk = '<div class="v-risk warn">低置信 / 无共识，已标记为风险答案</div>';
+    else if (r.risk === false) risk = '<div class="v-risk ok">共识充分，按正常答案返回</div>';
+    return '<div class="verdict tone-' + tone + '">' +
+      '<div class="v-main"><span class="v-lab">最终答案</span>' +
+      '<span class="v-ans' + (ans.length > 12 ? ' long' : '') + '">' + esc(ans) + '</span>' +
+      '<span class="v-src">' + esc(srcLabel(t)) + '</span></div>' +
+      '<div class="v-facts">' + facts.map(function (f) {
+        return '<span>' + esc(f) + '</span>';
+      }).join('') + '</div>' + risk + '</div>';
+  }
+
+  /* 链路一行：命中哪一步、卡在哪一步，一眼看完。 */
+  var CHAIN_ORDER = ['official', 'bank', 'snapshot', 'memory', 'cache', 'prompt', 'ai', 'vote', 'cross'];
+
+  function renderChain(t) {
+    var stages = t.stages || [];
+    var by = {};
+    stages.forEach(function (s) { if (!by[s.name]) by[s.name] = s; });
+    var items = CHAIN_ORDER.map(function (name) {
+      var s = by[name];
+      var tone = s ? statusTone(s.status) : 'mute';
+      var cls = (s && s.status === 'hit') ? 'hit' : tone;
+      var text = s ? statusLabel(s.status) : '未经过';
+      if (s && s.answer) text += ' · ' + s.answer;
+      return '<li class="' + cls + '" title="' + esc(stageLabel(name) + ' · ' + text) + '">' +
+        '<i></i><b>' + esc(stageLabel(name)) + '</b><span>' + esc(text) + '</span></li>';
+    }).join('');
+    return '<div class="card chaincard"><h3>链路' +
+      '<span class="hint">命中 / 跳过 / 失败都在这一行</span></h3>' +
+      '<ol class="chain">' + items + '</ol></div>';
+  }
+
+  /* 模型思考：每个模型一条可折叠记录，胜出的默认展开。 */
+  function renderSteps(t) {
+    if (t.qtype === 'batch') {
+      return '<div class="card steps"><h3>模型思考</h3>' +
+        '<div class="empty-note">批量调用不记录逐模型思考；本批每题的答案见上方批次表。</div></div>';
+    }
+    var models = t.models || [];
+    if (!models.length) {
+      return '<div class="card steps"><h3>模型思考</h3>' +
+        '<div class="empty-note">本题没有调用模型（官方 / 题库 / 记忆 / 缓存命中）。</div></div>';
+    }
+    var r = t.result || {};
+    var winner = models.filter(function (m) { return m.answer && m.answer === r.answer; })[0] || null;
+    var rows = models.map(function (m, i) {
+      var tone = m.status === 'running' ? 'run'
+        : (m.status === 'error' ? 'err' : (m.status === 'cancelled' ? 'warn' : 'ok'));
+      var ansCls = m.status === 'error' ? ' bad' : (m.answer ? '' : ' pending');
+      var ans = m.status === 'error' ? '调用失败'
+        : (m.answer ? '答案 <b>' + esc(m.answer) + '</b>'
+          : (m.status === 'running' ? '思考中…' : (m.status === 'cancelled' ? '已取消' : '无答案')));
+      var meta = [];
+      if (m.elapsed_ms) meta.push(ms(m.elapsed_ms));
+      if (m.total_tokens) meta.push(num(m.total_tokens) + ' tok');
+      if ((m.reasoning || '').trim()) meta.push((m.reasoning || '').trim().length + ' 字思考');
+      if (m.confidence != null) meta.push('conf ' + Number(m.confidence).toFixed(2));
+      var reason = (m.reasoning || '').trim();
+      var body = reason
+        ? '<pre class="reason">' + esc(reason) + '</pre>'
+        : '<pre class="reason none">' + (m.status === 'error'
+            ? esc(m.error || '调用失败，无思考内容')
+            : (m.status === 'running' ? '仍在思考，思考过程会随答案一起返回。'
+              : '该接口本次未返回思考内容（部分模型只给答案）')) + '</pre>';
+      return '<details class="step ' + tone + '" data-k="m' + i + '"' +
+        ((winner === m || models.length === 1) ? ' open' : '') + '>' +
+        '<summary class="step-head"><span class="dot-status ' + tone + '"></span>' +
+        '<span class="sname">' + esc(m.name) + '</span>' +
+        (meta.length ? '<span class="smeta">' + esc(meta.join(' · ')) + '</span>' : '') +
+        '<span class="sans' + ansCls + '">' + ans + '</span></summary>' + body + '</details>';
+    }).join('');
+    return '<div class="card steps"><h3>模型思考' +
+      '<span class="hint">点开看推理，胜出的模型默认展开</span></h3>' +
+      '<div class="steps">' + rows + '</div></div>';
+  }
+
+  /* ---------------------------------------------------------------- question */
+  function renderQuestionCard(t) {
     var inp = t.input || {};
     var full = t.title_full || t.title || '';
     var titleLen = Number(inp.title_len) || (t.title || '').length;
@@ -784,43 +998,32 @@ aside.right .card h3::before { background: var(--line-strong); }
       '<span class="flag ' + (optModelShort ? 'warn' : 'ok') + '">' +
         '选项 ' + optCount + ' 个 · ' + (optModelShort ? '模型收到 ' + optModel + ' 个' : '完整') + '</span>' +
       (imgs ? '<span class="flag ok">图片 ' + imgs + ' 张</span>'
-            : '<span class="flag mute">无图片</span>');
+            : '<span class="flag mute">无图片</span>') +
+      (t.batch_id
+        ? '<span class="flag mute">批次 ' + esc(t.batch_id) +
+          ((t.batch_items || []).length > 1 ? ' · 同批 ' + (t.batch_items || []).length + ' 题' : '') + '</span>'
+        : '');
 
     var opts = optList.map(function (opt, i) {
       return '<div class="opt-line"><b>' + String.fromCharCode(65 + i) + '</b>' + esc(opt) + '</div>';
     }).join('');
 
-    var models = t.models || [];
-    var steps = models.map(function (m) {
-      var tone = m.status === 'running' ? 'run'
-        : (m.status === 'error' ? 'err' : (m.status === 'cancelled' ? 'warn' : 'ok'));
-      var ansCls = m.status === 'error' ? ' bad' : (m.answer ? '' : ' pending');
-      var ans = m.status === 'error' ? '调用失败'
-        : (m.answer ? '答案 <b>' + esc(m.answer) + '</b>'
-          : (m.status === 'running' ? '思考中…' : (m.status === 'cancelled' ? '已取消' : '无答案')));
-      var meta = [];
-      if (m.elapsed_ms) meta.push(ms(m.elapsed_ms));
-      if (m.total_tokens) meta.push(num(m.total_tokens) + ' tok');
-      if ((m.reasoning || '').trim()) meta.push((m.reasoning || '').trim().length + ' 字思考');
-      if (m.confidence != null) meta.push('conf ' + Number(m.confidence).toFixed(2));
-      var reason = (m.reasoning || '').trim();
-      var body = reason
-        ? '<pre class="reason">' + esc(reason) + '</pre>'
-        : '<pre class="reason none">' + (m.status === 'error'
-            ? esc(m.error || '调用失败，无思考内容')
-            : (m.status === 'running' ? '仍在思考，思考过程会随答案一起返回。'
-              : '该接口本次未返回思考内容（部分模型只给答案）')) + '</pre>';
-      return '<div class="step">' +
-        '<div class="step-head"><span class="dot-status ' + tone + '"></span>' +
-        '<span class="sname">' + esc(m.name) + '</span>' +
-        (meta.length ? '<span class="smeta">' + esc(meta.join(' · ')) + '</span>' : '') +
-        '<span class="sans' + ansCls + '">' + ans + '</span></div>' + body + '</div>';
-    }).join('');
+    var batchRows = '';
+    if (t.qtype === 'batch' && (t.batch_items || []).length) {
+      batchRows = '<div class="btable">' +
+        '<div class="brow bhead"><span class="bidx">#</span><span class="btitle">本批题目</span>' +
+        '<span class="bans">答案</span><span class="bconf">置信度</span></div>' +
+        t.batch_items.map(function (item, i) {
+          var conf = item.confidence != null && isFinite(Number(item.confidence))
+            ? Number(item.confidence).toFixed(2) : '—';
+          return '<div class="brow"><span class="bidx">' + (i + 1) + '</span>' +
+            '<span class="btitle" title="' + esc(item.title || item.id || '') + '">' +
+            esc(item.title || item.id || '') + '</span>' +
+            '<span class="bans">' + esc(item.answer || '—') + '</span>' +
+            '<span class="bconf">' + conf + '</span></div>';
+        }).join('') + '</div>';
+    }
 
-    var r = t.result || {};
-    var finalAns = r.answer || (t.status === 'running' ? '…' : '—');
-    var finalSrc = r.provider ? ('来自 ' + r.provider) : srcLabel(t);
-    var valCls = String(finalAns).length > 10 ? ' long' : '';
     var imgText = (t.image_text || '').trim();
     var imgSrc = t.image_source || '';
     var imgBox = '';
@@ -845,34 +1048,16 @@ aside.right .card h3::before { background: var(--line-strong); }
         esc(kept.join('、')) + '（仅影响展示）。' + '</div>';
     }
 
-    return '<div class="card solve"><h3>' + '解题过程' +
-      ' <span class="hint">' + '题目接收 · 完整题干 · 逐模型思考 · 结论' + '</span></h3>' +
+    return '<div class="card solve"><h3>' + '题目' +
+      ' <span class="hint">' + '完整题干 · 选项 · 模型实际收到的内容' + '</span></h3>' +
       '<div class="recv">' + flags + '</div>' + alert +
       '<div class="qfull">' + esc(full || '（本题没有题干文本）') + '</div>' +
       (opts ? '<div class="opts-full">' + opts + '</div>' : '') +
-      imgBox +
-      '<div class="steps">' + (steps ||
-        '<div class="step"><pre class="reason none">本次没有模型输出。</pre></div>') + '</div>' +
-      '<div class="final"><span class="lab">' + '最终答案' + '</span>' +
-      '<span class="val' + valCls + '">' + esc(finalAns) + '</span>' +
-      '<span class="src">' + esc(finalSrc) + '</span></div></div>';
+      batchRows + imgBox + '</div>';
   }
 
-  /* ---------------------------------------------------------------- question */
-  function renderQuestion(t) {
-    var tags = [];
-    if (t.qtype) tags.push(badge(t.qtype, 'mute'));
-    if (t.scene) tags.push(badge(t.scene === 'unit' ? '单元测验' : t.scene, 'mute'));
-    if (t.subject) tags.push(badge(t.subject, 'mute'));
-    if ((t.options || []).length) tags.push(badge(t.options.length + ' 个选项', 'mute'));
-    tags.push(badge('#' + t.seq, 'mute'));
-    var opts = (t.options || []).map(function (opt, i) {
-      return '<span class="opt" title="' + esc(opt) + '">' + String.fromCharCode(65 + i) + '. ' + esc(opt) + '</span>';
-    }).join('');
-    return '<div class="card qhead"><h3>题目 <span class="hint">' + clock(t.started) + '</span></h3>' +
-      '<div class="tags">' + tags.join('') + '</div>' +
-      '<div class="qtitle">' + esc(t.title || '（无题干）') + '</div>' +
-      (opts ? '<div class="opts">' + opts + '</div>' : '') + '</div>';
+  function renderSolve(t) {
+    return renderVerdictBar(t) + renderQuestionCard(t) + renderChain(t) + renderSteps(t);
   }
 
   /* ---------------------------------------------------------------- waterfall */
@@ -965,32 +1150,6 @@ aside.right .card h3::before { background: var(--line-strong); }
   }
 
   /* ---------------------------------------------------------------- verdict */
-  function renderVerdict(t) {
-    var r = t.result || {};
-    var cls = t.status === 'error' ? 'err' : (r.source === 'ai' ? 'ai' : '');
-    var providerLabel = r.provider || '';
-    var hit = providerLabel && (t.models || []).find(function (m) {
-      return m.provider_name === providerLabel || m.name === providerLabel;
-    });
-    if (hit) providerLabel = hit.name;
-    var riskHtml = '';
-    if (t.status === 'error') riskHtml = '<div class="risk err">' + esc(t.error || '请求失败') + '</div>';
-    else if (r.risk === true) riskHtml = '<div class="risk warn">低置信 / 无共识，已标记为风险答案</div>';
-    else if (r.risk === false) riskHtml = '<div class="risk ok">共识充分，按正常答案返回</div>';
-    var kv = '';
-    if (providerLabel) kv += '<div class="kv"><span class="k">作答模型</span><span class="v">' + esc(providerLabel) + '</span></div>';
-    if (r.confidence != null) kv += '<div class="kv"><span class="k">置信度</span><span class="v">' + Number(r.confidence).toFixed(2) + '</span></div>';
-    if (r.consensus) kv += '<div class="kv"><span class="k">共识</span><span class="v">' + esc(r.consensus) + '</span></div>';
-    if (r.match) kv += '<div class="kv"><span class="k">匹配方式</span><span class="v">' + esc(r.match) + '</span></div>';
-    if (r.cached) kv += '<div class="kv"><span class="k">缓存</span><span class="v">命中</span></div>';
-    kv += '<div class="kv"><span class="k">总耗时</span><span class="v">' + ms(t.elapsed_ms) + '</span></div>';
-    if (t.total_tokens) kv += '<div class="kv"><span class="k">Token</span><span class="v">' + num(t.total_tokens) + '</span></div>';
-    if ((t.models || []).length) kv += '<div class="kv"><span class="k">模型数</span><span class="v">' + t.models.length + '</span></div>';
-    return '<div class="card"><h3>最终裁决</h3>' +
-      '<div class="answer ' + cls + '">' + esc((r.answer || (t.status === 'running' ? '…' : '—'))) + '</div>' +
-      '<div class="answer-sub">' + esc(srcLabel(t)) + '</div>' + kv + riskHtml + '</div>';
-  }
-
   function renderVotes(t) {
     var vote = t.vote;
     if (!vote) {
@@ -1033,6 +1192,8 @@ aside.right .card h3::before { background: var(--line-strong); }
     kv += '<div class="kv"><span class="k">开始</span><span class="v">' + clock(t.started) + '</span></div>';
     if (t.finished) kv += '<div class="kv"><span class="k">结束</span><span class="v">' + clock(t.finished) + '</span></div>';
     kv += '<div class="kv"><span class="k">时间轴长度</span><span class="v">' + ms(t.max_t) + '</span></div>';
+    if (t.batch_id) kv += '<div class="kv"><span class="k">批次</span><span class="v mono">' + esc(t.batch_id) + '</span></div>';
+    if ((t.batch_items || []).length > 1) kv += '<div class="kv"><span class="k">同批题数</span><span class="v">' + (t.batch_items || []).length + '</span></div>';
     if (t.context) kv += '<div class="kv"><span class="k">上下文</span><span class="v">' + esc(t.context) + '</span></div>';
     return '<div class="card"><h3>元数据</h3>' + kv + '</div>';
   }
@@ -1077,19 +1238,38 @@ aside.right .card h3::before { background: var(--line-strong); }
     var sig = traceSig(t);
     if (sig !== state.lastSig) {
       state.lastSig = sig;
-      var deepOpen = !!document.querySelector('#detail details.deep[open]');
+      // 轮询会反复重渲染：先记住折展开状态和滚动位置，渲染完再还原，
+      // 否则正在看的那段推理会每 700ms 被折叠回去。
+      var openKeys = {};
+      var closedKeys = {};
+      Array.prototype.forEach.call(
+        document.querySelectorAll('#detail details[data-k]'),
+        function (node) {
+          var key = node.getAttribute('data-k');
+          if (node.open) openKeys[key] = true;
+          else closedKeys[key] = true;
+        }
+      );
+      var view = $('view');
+      var scrollTop = view ? view.scrollTop : 0;
       $('detail').innerHTML = renderSolve(t) +
-        '<details class="deep"><summary>' + '深层信息 · 瀑布图 / 模型面板 / 事件流' +
+        '<details class="deep" data-k="deep"><summary>' + '深层信息 · 瀑布图 / 模型面板 / 事件流' +
         '<span class="hint">' + '排查慢在哪、谁失败了再看' + '</span></summary>' +
         renderWaterfall(t) + renderModels(t) + renderTimeline(t) + '</details>' +
         '<div class="foot">trace ' + esc(t.id) + ' · ' + new Date((t.started || 0) * 1000).toLocaleString('zh-CN') + '</div>';
-      if (deepOpen) {
-        var deep = document.querySelector('#detail details.deep');
-        if (deep) deep.open = true;
-      }
-      $('rail').innerHTML = renderVerdict(t) + renderVotes(t) + renderMeta(t);
+      Array.prototype.forEach.call(
+        document.querySelectorAll('#detail details[data-k]'),
+        function (node) {
+          var key = node.getAttribute('data-k');
+          if (openKeys[key]) node.open = true;
+          else if (closedKeys[key]) node.open = false;
+        }
+      );
+      if (view) view.scrollTop = scrollTop;
+      $('rail').innerHTML = renderVotes(t) + renderMeta(t);
       $('empty').hidden = true;
       $('detail').hidden = false;
+      $('detail').classList.add('settled');
     }
   }
 
@@ -1130,6 +1310,8 @@ aside.right .card h3::before { background: var(--line-strong); }
     state.selected = trace;
     state.follow = !!follow;
     state.lastSig = '';
+    var detail = $('detail');
+    if (detail) detail.classList.remove('settled');
     if (trace) {
       try { history.replaceState(null, '', '/trace?seq=' + trace.seq); } catch (err) {}
     }
@@ -1177,6 +1359,14 @@ aside.right .card h3::before { background: var(--line-strong); }
 
   /* ---------------------------------------------------------------- events */
   $('list').addEventListener('click', function (event) {
+    var head = event.target.closest('.batchhead');
+    if (head) {
+      var bid = head.getAttribute('data-batch');
+      state.batch = state.batch === bid ? '' : bid;
+      state.lastSig = '';
+      render();
+      return;
+    }
     var node = event.target.closest('.item');
     if (!node) return;
     var found = state.traces.find(function (t) { return t.id === node.getAttribute('data-id'); });

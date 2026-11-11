@@ -463,3 +463,58 @@ def get_for_answer(self, key: str) -> dict | None
 - userscript「本页预取 N 题」按钮（`mode=prefetch`）与进度提示；
 - trace 批次分组（`batch_id` / `item_id`）与 `/trace` 页展示；
 - `docs/api-batch.md`、README 一节、灰度开关说明。
+
+## 19. D8 执行记录（2026-11-11，已完成）
+
+### 已落地
+
+| 项 | 文件 | 说明 |
+|---|---|---|
+| trace 批次字段 | `app/trace.py:60` / `:78` / `:276` | `Trace` 新增 `batch_id` / `batch_items`，`to_dict()` 一并输出 |
+| 批次过滤 | `app/trace.py:437-451` | `recent(limit, after_seq, batch_id="")`，按批次精确过滤 |
+| 接口透传 | `app/main.py:697-701` | `GET /api/trace/recent?batch_id=...` |
+| 批量 trace | `app/main.py:2575-2600` | `_call_batch_one` 每次 AI 调用一条 trace（`qtype="batch"`），`batch_items` 记 id/题干/题型/答案/置信度 |
+| 批次号 | `app/main.py:3161` | `batch_id = f"b{time.time_ns()}"`，随 `stats.batch_id` 返回 |
+| 列表分组 | `app/static/trace.html:797-820` | 连续同批次渲染批次头（`n 题`），重复出现的批次挂 `续 · 批次` 样式 |
+| 批次筛选 | `app/static/trace.html:770` / `:1264` | 点批次头只看本批，再点清除；`listCount` 显示「已筛批次」；筛完为空时列表顶部留一个「清除筛选」行，不会卡死 |
+| 批量明细表 | `app/static/trace.html:856` | 批量 trace 的「解题过程」渲染本批表格（题干 / 答案 / 置信度），空模型提示改为「批量调用不记录逐模型思考」 |
+| 面板预取 | `userscript/ocs-assistant.user.js:674` / `:945` | 「本页预取 N 题」按钮 → `mode=prefetch`，最多 30 题，显示 `已缓存 x / 共 y` |
+| 超时参数 | `userscript/ocs-assistant.user.js:456` | `request(..., {timeout})`，预取用 90s（普通请求仍 12s） |
+| 文档 | `docs/api-batch.md` | 请求/响应/错误码/限流/与单题链路的关系 |
+
+### 行为约定
+
+- **一次批量 = 一条 trace**：`batch_items` 只收解析成功的题；解析失败的题回退单题补答，
+  它们的 trace 各自独立，不要指望在批次表里看到。
+- **单题不受影响**：没有 `batch_id` 的 trace 走原来的渲染路径，`recent()` 不传 `batch_id`
+  时返回与之前一致的列表。
+- **面板不猜服务端开关**：`BATCH_ENABLED` 默认 `0`，按钮始终可见；404 时显示
+  「批量接口未启用（服务端设置 BATCH_ENABLED=1）」而不是静默失败。
+- **预取不接管官方 handler**：官方脚本仍逐题请求 `/ocs/search`，命中缓存即秒回；
+  预取失败（断网、超时、404）对官方流程无影响。
+- **版本**：油猴脚本升到 `0.2.2`，`tools/ocs-assistant.user.js` 为事实源，
+  `userscript/` 由 `scripts/sync_userscripts.py` 生成（本次已同步，`--check` 通过）。
+
+### 测试（实测）
+
+- `tests/test_batch_api.py`：两个 `fake_batch` 补 `batch_id=""` 形参，避免
+  `_batch_fill_ai` 传三个参数时 `TypeError`。
+- `tests/test_trace.py:170` 新增 `test_batch_fields_and_filter`：批次字段落库、
+  `recent(batch_id=...)` 只回本批。
+- 全量：`python -m unittest discover -s tests` → **566 tests OK**。
+- `/trace` 渲染（Playwright + 本机 Edge，临时起 8811 端口灌 7 条轨迹）：
+  批次头 2 个 + 1 个「续」头；点批次头 `7 → 4`（同批 4 条），再点回 `7`，
+  `listCount` 显示 `4 / 7 · 已筛批次`；筛选后搜一个不存在的词 → 空态显示
+  「清除筛选」行、`listCount` 变 `0 / 7`，点它恢复；批量 trace 明细表 4 行（表头 + 3 题）；
+  `overflow: []`、`documentElement.scrollWidth == innerWidth`（无横向溢出）。
+- 油猴面板（Playwright 注入脚本 + 路由拦截 `/api/batch/query`）：
+  按钮文案 `本页预取 2 题`，点击后 `已缓存 1 / 共 2`（`class=ok`），
+  请求体 `{"mode":"prefetch","items":[{id,type,title,options,subject}...]}` 与契约一致。
+- `node --check` 通过（userscript 与 `trace.html` 内联脚本）。
+
+### 已知边界（实测）
+
+- 预取与单题同时解同一题仍可能重复调用一次 AI（没有按题单飞锁），只影响成本。
+- 面板按钮不感知服务端开关，只在点击后报 404 原因。
+- 没做「预取后官方逐题耗时 < 80ms」的端到端测量：需要真实 OCS 课程页 + 可用 provider，
+  本地只用拦截替身验了请求/渲染链路。

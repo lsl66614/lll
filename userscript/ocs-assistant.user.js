@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         OCS 网关助手
 // @namespace    ocs-ai-gateway
-// @version      0.2.1
-// @description  网关状态、本题速查、选项顺序监测与图片选项采集（只读+上报，不答题、不提交）
+// @version      0.2.2
+// @description  网关状态、本题速查、本页批量预取、选项顺序监测与图片选项采集（只读+上报+预取，不代答、不提交）
 // @author       liu620305-jpg
 // @license      MIT
 // @homepage     https://github.com/liu620305-jpg/ocs-ai-gateway
@@ -31,7 +31,7 @@
   var PAGE = (typeof unsafeWindow !== 'undefined' && unsafeWindow)
     ? unsafeWindow
     : (typeof window !== 'undefined' ? window : globalThis);
-  var SCRIPT_VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) || '0.2.1';
+  var SCRIPT_VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) || '0.2.2';
   var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var CONFIG_KEY = 'ocs_assistant_config';
   var ORDER_KEY = 'ocs_assistant_orders_v1';
@@ -453,7 +453,8 @@
     return id;
   }
 
-  function request(method, path, payload) {
+  function request(method, path, payload, opts) {
+    var timeout = (opts && opts.timeout) || 12000;
     var cfg = getConfig();
     var url = cfg.gateway + path;
     var headers = { 'Content-Type': 'application/json' };
@@ -466,7 +467,7 @@
           url: url,
           headers: headers,
           data: body,
-          timeout: 12000,
+          timeout: timeout,
           onload: function (response) {
             var data = null;
             try { data = JSON.parse(response.responseText); } catch (error) { data = null; }
@@ -540,6 +541,7 @@
     lookup: null,
     snapshot: null,
     vision: null,
+    prefetch: null,
     conflicts: [],
     error: '',
     posted: {},
@@ -667,6 +669,11 @@
       el('input', { id: 'ocsa-answer', placeholder: '人工答案（如 B 或 A#C）' }),
       el('div', { id: 'ocsa-lookup', class: 'muted' }),
       el('div', { id: 'ocsa-vision', class: 'muted' }),
+      el('div', { class: 'section', text: '批量' }),
+      el('div', { class: 'row' }, [
+        el('button', { class: 'act ghost', id: 'ocsa-prefetchbtn', text: '本页预取' }),
+        el('span', { id: 'ocsa-prefetchout', class: 'muted', text: '未预取' })
+      ]),
       el('div', { class: 'section', text: '诊断' }),
       el('div', { class: 'row' }, [
         el('button', { class: 'act ghost', id: 'ocsa-rescan', text: '重新扫描' }),
@@ -698,6 +705,7 @@
       shadow.getElementById('ocsa-debugout').classList.remove('hidden');
       try { navigator.clipboard.writeText(text); toast('诊断已复制'); } catch (error) { toast('诊断已输出'); }
     });
+    shadow.getElementById('ocsa-prefetchbtn').addEventListener('click', function () { prefetchPage(); });
     var answer = shadow.getElementById('ocsa-answer');
     var actions = shadow.getElementById('ocsa-actions');
     actions.appendChild(el('button', { class: 'act', id: 'ocsa-lookupbtn', text: '查题库' }));
@@ -786,6 +794,24 @@
     var servedVersion = served['ocs-assistant.user.js'];
     setText('ocsa-ver', SCRIPT_VERSION + (servedVersion && servedVersion !== SCRIPT_VERSION ? ' → ' + servedVersion : ''),
       servedVersion && servedVersion !== SCRIPT_VERSION ? 'warn' : 'muted');
+    var pre = state.prefetch;
+    var preText = '未预取';
+    var preCls = 'muted';
+    if (pre && pre.pending) {
+      preText = '预取中… ' + pre.total + ' 题';
+      preCls = 'warn';
+    } else if (pre && pre.reason) {
+      preText = '失败：' + pre.reason;
+      preCls = 'bad';
+    } else if (pre) {
+      preText = '已缓存 ' + pre.cached + ' / 共 ' + pre.total;
+      if (pre.skipped) preText += '（本页 ' + (pre.total + pre.skipped) + ' 题）';
+      preCls = pre.failed ? 'warn' : 'ok';
+    }
+    setText('ocsa-prefetchout', preText, preCls);
+    setText('ocsa-prefetchbtn',
+      '本页预取' + (state.questions.length ? ' ' + state.questions.length + ' 题' : ''),
+      'act ghost');
     var question = state.current;
     if (!question) {
       setText('ocsa-qstate', state.questions.length ? state.questions.length + ' 题' : '未识别', 'muted');
@@ -896,6 +922,64 @@
     if (manual) toast(questions.length ? '扫描到 ' + questions.length + ' 道题' : '没有识别到题目');
     render();
     if (changed) render();
+  }
+
+  // 批量预取：只把当前页题目丢给网关 `mode=prefetch`，不接管官方逐题流程。
+  // 网关把答案写进缓存，官方脚本下一题仍然逐题请求 /ocs/search，命中后秒回。
+  var PREFETCH_LIMIT = 30;   // 与 app/main.py `_BATCH_MAX_REQUEST_ITEMS` 对齐
+
+  function batchItemsFrom(questions) {
+    return questions.filter(function (question) {
+      return question && question.title && question.options && question.options.length;
+    }).slice(0, PREFETCH_LIMIT).map(function (question, index) {
+      return {
+        id: 'p' + (index + 1),
+        type: question.type,
+        title: question.title,
+        options: question.options.map(function (option) { return option.text || ''; }),
+        subject: state.cfg.subject || ''
+      };
+    });
+  }
+
+  function prefetchPage() {
+    var questions = collectQuestions();
+    state.questions = questions;
+    var items = batchItemsFrom(questions);
+    if (!items.length) {
+      state.prefetch = { pending: false, total: 0, cached: 0, skipped: 0, reason: '没有可预取的题目' };
+      toast('没有可预取的题目');
+      render();
+      return Promise.resolve(null);
+    }
+    state.prefetch = { pending: true, total: items.length, cached: 0, skipped: 0 };
+    render();
+    return request('POST', '/api/batch/query', { mode: 'prefetch', items: items },
+      { timeout: 90000 }).then(function (result) {
+      var data = result.data && result.data.data;
+      if (!result.ok || !data) {
+        var reason = (result.data && (result.data.detail || result.data.msg)) ||
+          (result.status === 404 ? '批量接口未启用（服务端设置 BATCH_ENABLED=1）' : '') ||
+          result.error || ('HTTP ' + result.status);
+        state.prefetch = { pending: false, total: items.length, cached: 0, skipped: 0, reason: String(reason) };
+        toast('预取失败：' + reason);
+      } else {
+        var stats = data.stats || {};
+        state.prefetch = {
+          pending: false,
+          total: Number(stats.total) || items.length,
+          cached: Number(stats.cached) || 0,
+          answered: Number(stats.answered) || 0,
+          failed: Number(stats.failed) || 0,
+          skipped: questions.length - items.length,
+          batchId: stats.batch_id || '',
+          reason: ''
+        };
+        toast('预取完成：' + (state.prefetch.cached + state.prefetch.answered) + ' / ' + state.prefetch.total);
+      }
+      render();
+      return result;
+    });
   }
 
   function harvestQuestion(question, manual) {

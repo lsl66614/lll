@@ -176,7 +176,7 @@ class BatchApiTests(unittest.TestCase):
         lookup.assert_not_called()
 
     def test_ai_path_writes_cache(self):
-        async def fake_batch(provider, items):
+        async def fake_batch(provider, items, batch_id=""):
             return {"q1": {"answer": "B", "confidence": 0.8}}, [], 12, ""
 
         patches = self._cheap_miss()
@@ -194,7 +194,7 @@ class BatchApiTests(unittest.TestCase):
         record.assert_called_once()
 
     def test_ai_failure_marks_no_answer(self):
-        async def fake_batch(provider, items):
+        async def fake_batch(provider, items, batch_id=""):
             return {}, ["q1"], 0, "上游 500"
 
         patches = self._cheap_miss()

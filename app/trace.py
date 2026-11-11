@@ -57,6 +57,8 @@ class Trace:
         input_images: int = 0,
         model_title_len: int = 0,
         model_options: int = 0,
+        batch_id: str = "",
+        batch_items: list[dict[str, Any]] | None = None,
     ) -> None:
         self.id = f"t{seq}-{uuid.uuid4().hex[:6]}"
         self.seq = seq
@@ -73,6 +75,14 @@ class Trace:
         self.input_images = int(input_images or 0)
         self.model_title_len = int(model_title_len or len(self.title_full))
         self.model_options = int(model_options or len(self.options))
+        self.batch_id = _clip(batch_id, 60)
+        self.batch_items = [
+            {
+                key: (_clip(value, 200) if isinstance(value, str) else value)
+                for key, value in dict(item).items()
+            }
+            for item in (batch_items or [])
+        ][:30]
         self.subject = _clip(subject, 80)
         self.context = _clip(context, 200)
         self.scene = ""
@@ -263,6 +273,8 @@ class Trace:
                 "subject": self.subject,
                 "context": self.context,
                 "scene": self.scene,
+                "batch_id": self.batch_id,
+                "batch_items": [dict(item) for item in self.batch_items],
                 "stages": stages,
                 "models": models,
                 "total_tokens": sum(int(item.get("total_tokens") or 0) for item in models),
@@ -294,6 +306,8 @@ class TraceStore:
         input_images: int = 0,
         model_title_len: int = 0,
         model_options: int = 0,
+        batch_id: str = "",
+        batch_items: list[dict[str, Any]] | None = None,
     ) -> Trace:
         try:
             with self._lock:
@@ -305,6 +319,8 @@ class TraceStore:
                     input_images=input_images,
                     model_title_len=model_title_len,
                     model_options=model_options,
+                    batch_id=batch_id,
+                    batch_items=batch_items,
                 )
                 self._traces.append(trace)
             self._current.set(trace)
@@ -418,7 +434,9 @@ class TraceStore:
 
     # ---------------------------------------------------------------- 读取
 
-    def recent(self, limit: int = 20, after_seq: int = 0) -> dict[str, Any]:
+    def recent(
+        self, limit: int = 20, after_seq: int = 0, batch_id: str = ""
+    ) -> dict[str, Any]:
         try:
             limit = max(1, min(int(limit), MAX_TRACES))
         except Exception:  # noqa: BLE001
@@ -429,6 +447,8 @@ class TraceStore:
             after = 0
         with self._lock:
             traces = [item for item in self._traces if item.seq > after]
+            if batch_id:
+                traces = [item for item in traces if item.batch_id == batch_id]
             traces = traces[-limit:]
             latest = self._seq
         ordered = sorted(traces, key=lambda item: item.seq, reverse=True)

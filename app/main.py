@@ -694,9 +694,11 @@ async def trace_page() -> FileResponse:
 
 
 @app.get("/api/trace/recent")
-async def api_trace_recent(limit: int = 20, after_seq: int = 0) -> dict[str, Any]:
+async def api_trace_recent(
+    limit: int = 20, after_seq: int = 0, batch_id: str = ""
+) -> dict[str, Any]:
     """最近答题轨迹（内存，最多 50 条）。/trace 页面轮询这个接口。"""
-    return trace_store.recent(limit=limit, after_seq=after_seq)
+    return trace_store.recent(limit=limit, after_seq=after_seq, batch_id=batch_id)
 
 
 def _userscript_header(text: str) -> str | None:
@@ -2573,6 +2575,7 @@ def _batch_lock(provider_id: str) -> asyncio.Lock:
 async def _call_batch_one(
     provider: dict[str, Any],
     items: list[dict[str, Any]],
+    batch_id: str = "",
 ) -> tuple[dict[str, dict[str, Any]], list[str], int, str]:
     """一个模型答一批题，返回 (按 id 的结果, 缺失 id, 耗时, 错误)。
 
@@ -2582,6 +2585,31 @@ async def _call_batch_one(
     ids = [str(item.get("id")) for item in items]
     if not ids:
         return {}, [], 0, ""
+    by_id = {str(item.get("id")): item for item in items}
+    trace = trace_store.begin(
+        title=f"批量 {len(ids)} 题", qtype="batch", batch_id=batch_id
+    )
+
+    def _close(resolved: dict[str, dict[str, Any]], error: str = "") -> None:
+        try:
+            trace.batch_items = [
+                {
+                    "id": qid,
+                    "title": str((by_id.get(qid) or {}).get("title") or "")[:200],
+                    "type": str((by_id.get(qid) or {}).get("type") or "")[:40],
+                    "answer": str(payload.get("answer") or "")[:200],
+                    "confidence": payload.get("confidence"),
+                }
+                for qid, payload in resolved.items()
+            ]
+            trace.finish(
+                result=None if error else {"items": len(ids), "resolved": len(resolved)},
+                error=error,
+            )
+        except Exception:  # noqa: BLE001 - trace 永不阻断答题
+            pass
+        trace_store.reset(trace)
+
     started = time.perf_counter()
     provider_name = str(provider.get("name") or provider.get("id") or "")
     budget = min(float(provider["timeout"]), float(config.REQUEST_TIMEOUT_SECONDS))
@@ -2594,19 +2622,24 @@ async def _call_batch_one(
     except asyncio.TimeoutError:
         stats.failure(provider, f"批量超时（>{budget:.0f}s）")
         _mark_failure(str(provider.get("id") or ""))
-        return {}, ids, 0, f"{provider_name}：批量超时"
+        error = f"{provider_name}：批量超时"
+        _close({}, error)
+        return {}, ids, 0, error
     except ProviderError as exc:
         stats.failure(provider, exc.message)
         _mark_failure(str(provider.get("id") or ""))
-        return {}, ids, 0, f"{provider_name}：{exc.message}"
+        error = f"{provider_name}：{exc.message}"
+        _close({}, error)
+        return {}, ids, 0, error
     except Exception as exc:  # noqa: BLE001 - 整批异常都退回单题
         stats.failure(provider, f"内部错误: {exc}")
         _mark_failure(str(provider.get("id") or ""))
-        return {}, ids, 0, f"{provider_name}：内部错误 {exc}"
+        error = f"{provider_name}：内部错误 {exc}"
+        _close({}, error)
+        return {}, ids, 0, error
 
     elapsed = int((time.perf_counter() - started) * 1000)
     parsed, _ignored = parse_answer_array(text, ids)
-    by_id = {str(item.get("id")): item for item in items}
     resolved: dict[str, dict[str, Any]] = {}
     for qid, payload in parsed.items():
         item = by_id.get(qid)
@@ -2631,6 +2664,7 @@ async def _call_batch_one(
         "batch", "partial" if missing else "done",
         provider=provider_name, items=len(ids), missing=len(missing),
     )
+    _close(resolved)
     return resolved, missing, elapsed, ""
 
 
@@ -3029,7 +3063,9 @@ async def _batch_single(item: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _batch_fill_ai(
-    items: list[dict[str, Any]], results: dict[str, dict[str, Any]]
+    items: list[dict[str, Any]],
+    results: dict[str, dict[str, Any]],
+    batch_id: str = "",
 ) -> int:
     """按 provider 顺序批量补答；返回实际 AI 调用次数。"""
     if not items:
@@ -3039,7 +3075,9 @@ async def _batch_fill_ai(
     for provider in _unit_ready(store.enabled())[:2]:
         if not remaining:
             break
-        resolved, missing, elapsed, _error = await _call_batch_one(provider, remaining)
+        resolved, missing, elapsed, _error = await _call_batch_one(
+            provider, remaining, batch_id
+        )
         calls += 1
         stats.bump("batch_ai_calls")
         by_id = {item["id"]: item for item in remaining}
@@ -3120,6 +3158,7 @@ async def api_batch_query(request: Request) -> JSONResponse:
         return JSONResponse({"code": 40003, "msg": error}, status_code=400)
 
     started = time.perf_counter()
+    batch_id = f"b{time.time_ns()}"
     opts = settings.all()
     results: dict[str, dict[str, Any]] = {}
     pending: list[dict[str, Any]] = []
@@ -3135,7 +3174,7 @@ async def api_batch_query(request: Request) -> JSONResponse:
 
     ai_calls = 0
     for chunk in plan_batches(pending):
-        ai_calls += await _batch_fill_ai(chunk, results)
+        ai_calls += await _batch_fill_ai(chunk, results, batch_id)
 
     ordered = [results[item["id"]] for item in items if item["id"] in results]
     cached_count = sum(1 for row in ordered if row["cached"])
@@ -3162,6 +3201,7 @@ async def api_batch_query(request: Request) -> JSONResponse:
                 "answered": answered,
                 "failed": failed,
                 "ai_calls": ai_calls,
+                "batch_id": batch_id,
                 "elapsed_ms": int((time.perf_counter() - started) * 1000),
             },
         },

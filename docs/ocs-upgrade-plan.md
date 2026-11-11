@@ -1530,3 +1530,55 @@ AI 简报实测可用（provider 1，约 440 字），保存在最近一次运�
   两侧答案语义一致，暂不强行合并。
 - 位置映射仍然是猜：OCS 只传字母时，没有任何信息能证明「这次顺序和上次一样」。
   真正的解法是让答题页把选项图片一起传上来（需要改 OCS 端，不在本仓库）。
+
+
+### 批量答题链路落地（2026-11-11 21:05）
+
+**背景（实测）**：参照的三个同类项目里，`LynnGuo666/ocsjs-ai-answer-service` 只有
+4 种题型的批量接口、`Trashwbin/MultiAI-Answer-cx` 是浏览器扩展直连多模型、
+`amlkiller/llm_answerer` 有 SQLite(WAL) 缓存但逐题串行。我们的单题链路已有
+题库 → 记忆 → 缓存 → 多模型投票，缺的是「一次把整页题目交给网关」的入口。
+计划与分阶段记录见 `docs/upgrade-plan-2026-11-11.md`（D1~D8）。
+
+**1) 批量接口**
+
+- `app/main.py:3129` 起 `POST /api/batch/query`：`answer` / `prefetch` 双模，
+  `BATCH_ENABLED=0` 时 404；入参校验（1~30 题、id 唯一、题型可识别）在 `:2954`；
+  便宜路径（题库 → 记忆 → 缓存）在 `:2992`；AI 补答分片在 `:3065`。
+- `app/batch_parse.py` 385 行：多题 JSON 五级兜底解析（直解 → 剥围栏 → 平衡括号 →
+  修复/补括号 → 正则），裸键修复用逐字符扫描，不会破坏 `x{a:b}`。
+- `app/parsing.py:144` `build_batch_messages()`：强约束 JSON + 2 题 few-shot；
+  `plan_batches()` 按 `BATCH_MAX_ITEMS` / `BATCH_MAX_CHARS` 双阈值分片。
+
+**2) 缓存与投票加固**
+
+- `app/cache.py:125` `lookup_for_answer()`：只对 `ai` / `unit-vote` 来源且置信度低于
+  `CACHE_RETRY_MIN_CONFIDENCE` 的记录按 `CACHE_RETRY_PROBABILITY` 重问，默认概率 0。
+- `app/quality.py:148` `VoteResult.tie_break`：平票按 weight → count → confidence → 顺序，
+  结果里新增 `tie_break` 字段供前端解释。
+
+**3) 可观测与客户端**
+
+- `app/trace.py:60` / `:276` trace 新增 `batch_id` / `batch_items`；
+  `/api/trace/recent?batch_id=` 可过滤（`app/main.py:697`）。
+- `app/static/trace.html` 列表按批次折叠（`:797`），批次头点一下只看本批（`:1264`），
+  批量 trace 的「解题过程」渲染本批表格（`:856`）。
+- `tools/ocs-assistant.user.js` 升到 0.2.2：面板「本页预取 N 题」走 `mode=prefetch`，
+  最多 30 题、90s 超时，不接管 OCS 官方 handler；`userscript/` 由
+  `scripts/sync_userscripts.py` 同步（`--check` 通过）。
+- 契约文档：`docs/api-batch.md`；README 新增「批量预取」一节。
+
+**验证**
+
+- `python -m unittest discover -s tests` → **566 tests OK**（新增
+  `test_batch_parse.py` 26、`test_batch_call.py` 14、`test_batch_api.py` 12、
+  `test_cache_retry.py` 8，`test_trace.py` 补批次用例）。
+- `/trace` 用 Playwright + 本机 Edge 实测：批次头分组正确、点击筛选 7 → 4 → 7、
+  空态留「清除筛选」行、批量明细表 3 行、无横向溢出。
+- 油猴面板实测（路由拦截）：按钮 `本页预取 2 题` → `已缓存 1 / 共 2`，
+  请求体 `{mode:"prefetch", items:[{id,type,title,options,subject}]}`。
+
+**未做（明确排除）**
+
+- 扩展端直连多模型（`MultiAI` 模式）：我们是网关，直连会泄露 key、丢缓存与题库。
+- 服务端密文字体解码（`decoder.ts`）：应在页面侧做，独立任务。
