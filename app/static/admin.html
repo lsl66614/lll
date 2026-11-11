@@ -18,9 +18,9 @@
     } catch (e) { document.documentElement.dataset.theme = 'dark'; }
   })();
 </script>
-<link rel="stylesheet" href="/static/admin-legacy.css?v=20261111" />
+<link rel="stylesheet" href="/static/admin-legacy.css?v=20261112d" />
 <!-- HUD 设计系统（试点层）：必须在 admin-legacy.css 之后，才能覆盖旧层 -->
-<link rel="stylesheet" href="/static/admin-hud.css?v=20261111" />
+<link rel="stylesheet" href="/static/admin-hud.css?v=20261112d" />
 </head>
 <body>
 <a class="skip-link" href="#main">跳到主内容</a>
@@ -204,26 +204,28 @@
                 </button>
               </div>
             </div>
-
-            <div class="hud-card hud-http">
-              <div class="hud-card-head">
-                <h3>接口耗时</h3>
-                <span class="hint">最近 800 次</span>
-              </div>
-              <div class="hud-card-body">
-                <div id="httpStats"><span class="hint" style="display:block;padding:10px 14px">暂无请求记录</span></div>
-              </div>
-            </div>
           </div>
         </div>
 
-        <div class="hud-card hud-quality">
-          <div class="hud-card-head">
-            <h3>模型正确率</h3>
-            <span class="hint">官方答案回流校验 · 仅统计已回流到官方的题 · n&lt;20 折叠</span>
+        <div class="hud-duo">
+          <div class="hud-card hud-http">
+            <div class="hud-card-head">
+              <h3>接口耗时</h3>
+              <span class="hint">最近 800 次</span>
+            </div>
+            <div class="hud-card-body">
+              <div id="httpStats"><span class="hint" style="display:block;padding:10px 14px">暂无请求记录</span></div>
+            </div>
           </div>
-          <div class="hud-card-body">
-            <div id="qualityList"><span class="hint" style="display:block;padding:10px 14px">暂无回流样本：测验结果页回传官方答案后自动统计</span></div>
+
+          <div class="hud-card hud-quality">
+            <div class="hud-card-head">
+              <h3>模型正确率</h3>
+              <span class="hint">官方答案回流校验 · 仅统计已回流到官方的题 · n&lt;20 折叠</span>
+            </div>
+            <div class="hud-card-body">
+              <div id="qualityList"><span class="hint" style="display:block;padding:10px 14px">暂无回流样本：测验结果页回传官方答案后自动统计</span></div>
+            </div>
           </div>
         </div>
 
@@ -312,7 +314,7 @@
         <div id="bankList"></div>
       </div>
 
-      <div class="hud-card" style="margin-top:16px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>截图搜题<span class="tier ext" title="需要可用的视觉模型，否则无法转写">依赖外部</span></h2>
           <span class="hint">视觉转写 + 题库相似检索 · 不提交任何作答</span>
@@ -476,7 +478,7 @@
     </section>
 
     <section class="section" data-section="conflicts">
-      <div class="hud-card" style="margin-bottom:14px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>最近做错的题<span class="tier auto" title="结果页一回传就出现在这里；不轮询模型">实时</span></h2>
           <span class="hint" id="recentFeedbackHint">你选了什么 / 官方答案是什么 / 题库与记忆有没有吸收</span>
@@ -602,7 +604,7 @@
           <span class="hint">题库之外的第二层：见过没有、谁答对过、错在哪</span>
         </div>
         <div class="tips">
-          <div class="stats" style="margin-bottom:12px;">
+          <div class="stats">
             <div class="stat"><span>作答事件</span><b id="memEpisodes">0</b></div>
             <div class="stat"><span>已判正确</span><b id="memCorrect">0</b></div>
             <div class="stat"><span>已判错误</span><b id="memWrongCount">0</b></div>
@@ -646,7 +648,7 @@
         </div>
       </div>
 
-      <div class="hud-card" style="margin-top:16px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>测验答案发布状态<span class="tier ext" title="需要用户脚本上报测验页数据">依赖外部</span></h2>
           <span class="hint">来自回看页回捞结果 · 已发布才能取到官方答案</span>
@@ -661,7 +663,7 @@
         </div>
       </div>
 
-      <div class="hud-card" style="margin-top:16px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>待做作业 / 测验<span class="tier ext" title="来自用户脚本上报的目录数据">依赖外部</span></h2>
           <span class="hint">只读扫描，不进入、不提交</span>
@@ -696,7 +698,7 @@
         </div>
       </div>
 
-      <div class="hud-card" style="margin-top:16px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>手动校准与投票<span class="tier semi" title="校准只生成 pending 候选，不会自动采纳；投票默认 dry-run">半自动</span></h2>
           <span class="hint">与上方自动任务同一批能力，按需手动触发</span>
@@ -728,7 +730,7 @@
         </div>
       </div>
 
-      <div class="hud-card" style="margin-top:16px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>探针状态<span class="tier ext" title="需要用户脚本每 5 分钟心跳上报">依赖外部</span></h2>
           <span class="hint">心跳 5 分钟一次 · 超过 15 分钟视为离线</span>
@@ -743,7 +745,7 @@
         </div>
       </div>
 
-      <div class="hud-card" style="margin-top:16px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>通知推送<span class="tier ext" title="依赖 Server酱 / Bark / webhook 外部服务">依赖外部</span></h2>
           <span class="hint">每日任务报告 · Server酱 / Bark / 通用 webhook</span>
@@ -765,7 +767,7 @@
         </div>
       </div>
 
-      <div class="hud-card" style="margin-top:16px;">
+      <div class="hud-card">
         <div class="hud-card-head">
           <h2>运维日志</h2>
           <span class="hint">每日 03:00 自动执行：备份 / 近似去重预演 / 公式索引巡检 / 冲突投票预演</span>
@@ -821,7 +823,7 @@
           <div id="unitList" style="margin-top:12px;"></div>
         </div>
       </div>
-      <div class="hud-card" style="margin-top:16px">
+      <div class="hud-card">
         <div class="hud-card-head"><h2>提交前检查<span class="tier auto" title="直接读取当前答题状态给出风险结论">闭环</span></h2><span class="hint">风险题 > 0 不建议提交</span></div>
         <div class="tips"><div id="unitChecklist" class="hint">暂无数据</div></div>
       </div>
