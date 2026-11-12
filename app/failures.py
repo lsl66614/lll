@@ -16,6 +16,9 @@ from typing import Any
 # 可重试的失败类型：临时故障、答案解析失败、其他未知错误。
 _RETRYABLE_KINDS = frozenset({"transient", "unparsed", "other"})
 
+MAX_IMAGE_URLS = 4
+MAX_IMAGE_URL_LENGTH = 500
+
 
 def _norm_text(value: Any) -> str:
     return " ".join(str(value or "").split())
@@ -28,6 +31,30 @@ def _norm_options(options: Any) -> tuple[str, ...]:
         text = _norm_text(options)
         return (text,) if text else ()
     return ()
+
+
+def _norm_urls(value: Any) -> list[str]:
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        return []
+    urls: list[str] = []
+    for item in value:
+        text = _norm_text(item)
+        if text and text not in urls:
+            urls.append(text[:MAX_IMAGE_URL_LENGTH])
+        if len(urls) >= MAX_IMAGE_URLS:
+            break
+    return urls
+
+
+def _is_retryable(item: dict[str, Any]) -> bool:
+    """图片题只有留下原图地址才可重做，否则重做等于换个模型瞎猜。"""
+    if item.get("kind") not in _RETRYABLE_KINDS:
+        return False
+    if not _norm_text(item.get("title")):
+        return False
+    return int(item.get("images") or 0) == 0 or bool(item.get("image_urls"))
 
 
 def question_key(entry: dict[str, Any]) -> tuple[Any, ...]:
@@ -109,17 +136,15 @@ class FailureLog:
         item["first_at"] = float(item.get("first_at") or at)
         item["count"] = max(1, int(item.get("count") or 1))
         item["kind"] = str(item.get("kind") or classify_failure(item.get("code"), item.get("message")))
-        item["retryable"] = bool(
-            item["kind"] in _RETRYABLE_KINDS
-            and _norm_text(item.get("title"))
-            and int(item.get("images") or 0) == 0
-        )
+        item["image_urls"] = _norm_urls(item.get("image_urls"))
+        item["retryable"] = _is_retryable(item)
         return item
 
     def _merge(self, prev: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
         at = float(entry.get("at") or 0)
         merged = dict(prev)
-        for field in ("code", "type", "title", "options", "subject", "images", "message"):
+        for field in ("code", "type", "title", "options", "subject", "images",
+                      "image_urls", "message"):
             if field not in entry:
                 continue
             value = entry[field]
@@ -132,16 +157,16 @@ class FailureLog:
                 # 只要有一次带了显式图片，就不能把它当成可纯文本重试的题。
                 merged["images"] = max(int(prev.get("images") or 0), int(value or 0))
                 continue
+            if field == "image_urls":
+                merged["image_urls"] = _norm_urls(
+                    list(prev.get("image_urls") or []) + list(value or []))
+                continue
             merged[field] = value
         merged["first_at"] = min(float(prev.get("first_at") or prev.get("at") or at), at)
         merged["at"] = max(float(prev.get("at") or 0), at)
         merged["count"] = int(prev.get("count") or 0) + int(entry.get("count") or 1)
         merged["kind"] = classify_failure(merged.get("code"), merged.get("message"))
-        merged["retryable"] = bool(
-            merged["kind"] in _RETRYABLE_KINDS
-            and _norm_text(merged.get("title"))
-            and int(merged.get("images") or 0) == 0
-        )
+        merged["retryable"] = _is_retryable(merged)
         return merged
 
     def add(self, entry: dict[str, Any]) -> None:

@@ -524,3 +524,48 @@ details.step > summary:hover .sname { color: var(--hud-primary-text); }
   .brand span { display: none; }
   .live { padding-left: 10px; }
 }
+
+/* 失败轨迹：指定模型重做 */
+.row-retry {
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  line-height: 16px;
+  border-radius: 6px;
+  border: 1px solid var(--hud-border);
+  background: transparent;
+  color: var(--hud-fg-2);
+  cursor: pointer;
+}
+.row-retry:hover { color: var(--hud-primary-text); border-color: var(--hud-primary); }
+
+.retry-modal {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .55);
+}
+.retry-modal[hidden] { display: none; }
+.retry-box {
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--hud-border);
+  background: var(--hud-popover);
+  color: var(--hud-fg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+}
+.retry-head { font-size: 13px; margin-bottom: 6px; word-break: break-all; }
+.retry-hint { font-size: 11px; color: var(--hud-fg-3); margin-bottom: 10px; }
+.retry-models {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 240px; overflow: auto; margin-bottom: 12px;
+}
+.retry-model {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; font-size: 12px;
+  border: 1px solid var(--hud-border-soft); border-radius: 8px; cursor: pointer;
+}
+.retry-model:hover { border-color: var(--hud-border); }
+.retry-empty { font-size: 11px; color: var(--hud-fg-3); }
+.retry-foot { display: flex; align-items: center; gap: 8px; }
+.retry-status { flex: 1; font-size: 11px; color: var(--hud-fg-3); }

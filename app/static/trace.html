@@ -17,7 +17,7 @@
 </script>
 <link rel="stylesheet" href="/static/trace-legacy.css?v=20261112b" />
 <link rel="stylesheet" href="/static/hud-tokens.css?v=20261112b" />
-<link rel="stylesheet" href="/static/trace-hud.css?v=20261112b" />
+<link rel="stylesheet" href="/static/trace-hud.css?v=20261112f" />
 </head>
 <body>
 <header>
@@ -82,6 +82,19 @@
 <div class="drawer" id="drawer">
   <div class="drawer-head"><b id="drawerTitle">详情</b><button class="ghost" id="drawerClose">关闭</button></div>
   <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<div id="retryModal" class="retry-modal" hidden>
+  <div class="retry-box" role="dialog" aria-modal="true" aria-labelledby="retryTitle">
+    <div class="retry-head"><b id="retryTitle">重做这道题</b></div>
+    <div class="retry-hint">只有勾选的模型参与这次重做；题目和图片沿用原始记录。</div>
+    <div id="retryModels" class="retry-models"></div>
+    <div class="retry-foot">
+      <span id="retryStatus" class="retry-status" aria-live="polite"></span>
+      <button id="retryCancel" class="ghost">取消</button>
+      <button id="retryGo" class="primary">开始重做</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -279,7 +292,9 @@
         '<div class="l2">' + badge(srcLabel(t), t.status === 'running' ? 'run' : (t.status === 'error' ? 'err' : srcClass(src))) +
         (t.models && t.models.length ? '<span>' + t.models.length + ' 模型</span>' : '') +
         (tokens ? '<span class="sep">·</span><span>' + esc(tokens) + '</span>' : '') +
-        '<span class="ms">' + ms(t.elapsed_ms) + '</span></div></div>');
+        '<span class="ms">' + ms(t.elapsed_ms) + '</span>' +
+        (t.status === 'error' ? '<button class="row-retry" data-retry="' + esc(t.id) + '" title="选择模型重做这道题">重做</button>' : '') +
+        '</div></div>');
     });
     $('list').innerHTML = parts.join('');
     $('listCount').textContent = list.length + ' / ' + state.latest + (state.batch ? ' · 已筛批次' : '');
@@ -1115,6 +1130,13 @@
       render();
       return;
     }
+    var retryBtn = event.target.closest('.row-retry');
+    if (retryBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      openRetry(retryBtn.getAttribute('data-retry'));
+      return;
+    }
     var node = event.target.closest('.item');
     if (!node) return;
     var found = state.traces.find(function (t) { return t.id === node.getAttribute('data-id'); });
@@ -1185,9 +1207,88 @@
   });
   $('drawerClose').addEventListener('click', closeDrawer);
   $('mask').addEventListener('click', closeDrawer);
+
+  /* ---------------------------------------------------------------- retry */
+  function apiHeaders() {
+    var headers = { 'Content-Type': 'application/json' };
+    var token = '';
+    try { token = localStorage.getItem('gw_token') || ''; } catch (err) {}
+    if (token) headers['X-Gateway-Token'] = token;
+    return headers;
+  }
+  function loadProviders() {
+    fetch('/api/state', { cache: 'no-store', headers: apiHeaders() })
+      .then(function (resp) { return resp.ok ? resp.json() : null; })
+      .then(function (data) {
+        state.providers = ((data && data.providers) || [])
+          .filter(function (p) { return p && p.enabled; })
+          .map(function (p) { return { id: p.id, name: p.name || p.model || p.id }; });
+      })
+      .catch(function () { state.providers = []; });
+  }
+  function openRetry(id) {
+    var trace = state.traces.find(function (item) { return item.id === id; });
+    if (!trace) return;
+    state.retryId = id;
+    $('retryTitle').textContent = '#' + trace.seq + ' ' + (trace.title || '未命名题目');
+    $('retryStatus').textContent = '';
+    $('retryGo').disabled = false;
+    var box = $('retryModels');
+    if (!state.providers.length) {
+      box.innerHTML = '<div class="retry-empty">还没有读到可用模型，先到 /admin 确认已启用。</div>';
+    } else {
+      box.innerHTML = state.providers.map(function (p) {
+        return '<label class="retry-model"><input type="checkbox" value="' + esc(p.id) +
+          '" checked> <span>' + esc(p.name) + '</span></label>';
+      }).join('');
+    }
+    $('retryModal').hidden = false;
+  }
+  function closeRetry() {
+    $('retryModal').hidden = true;
+    state.retryId = '';
+  }
+  function submitRetry() {
+    var trace = state.traces.find(function (item) { return item.id === state.retryId; });
+    if (!trace) return;
+    var picked = Array.prototype.slice
+      .call($('retryModels').querySelectorAll('input[type=checkbox]:checked'))
+      .map(function (el) { return el.value; });
+    if (!picked.length) { $('retryStatus').textContent = '至少选一个模型'; return; }
+    $('retryGo').disabled = true;
+    $('retryStatus').textContent = '重做中…';
+    fetch('/api/failures/retry', {
+      method: 'POST', headers: apiHeaders(), cache: 'no-store',
+      body: JSON.stringify({
+        title: trace.title || '', type: trace.qtype || 'single',
+        options: trace.options || [], subject: trace.subject || '',
+        providers: picked
+      })
+    }).then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (data && data.code === 0) {
+          $('retryStatus').textContent = '重做成功，答案 ' + data.answer;
+          setTimeout(function () { closeRetry(); poll(); }, 900);
+        } else {
+          $('retryStatus').textContent = '重做失败：' + ((data && data.message) || '未知错误');
+          $('retryGo').disabled = false;
+        }
+      })
+      .catch(function (err) {
+        $('retryStatus').textContent = '重做失败：' + err.message;
+        $('retryGo').disabled = false;
+      });
+  }
+  $('retryCancel').addEventListener('click', closeRetry);
+  $('retryGo').addEventListener('click', submitRetry);
+  $('retryModal').addEventListener('click', function (event) {
+    if (event.target === $('retryModal')) closeRetry();
+  });
+
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
       closeDrawer();
+      closeRetry();
       document.body.classList.remove('nav-open');
     }
   });
@@ -1196,6 +1297,7 @@
   var initialSeq = null;
   try { initialSeq = Number(new URLSearchParams(location.search).get('seq')) || null; } catch (err) {}
   poll();
+  loadProviders();
   if (initialSeq) {
     // 首屏 poll 是异步的：固定 400ms 只试一次，慢请求时会静默失效。
     // 改成最多重试 20 次（约 6s），找到就停。
@@ -1217,5 +1319,6 @@
   });
 })();
 </script>
+
 </body>
 </html>

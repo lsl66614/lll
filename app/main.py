@@ -13,6 +13,7 @@ import threading
 import time
 import zipfile
 from collections import Counter, deque
+from contextvars import ContextVar
 from typing import Any
 
 import httpx
@@ -85,7 +86,27 @@ from .quality import (
     weighted_choice,
 )
 from .mathcheck import math_equivalent
-from .failures import FailureLog
+from .failures import FailureLog, question_key
+
+# 只在「指定模型重做」时设置：路由选完之后再按白名单收一次，
+# 这样不必把参数穿过整条 _resolve_core_impl 调用链。
+_forced_provider_ids: ContextVar[tuple[str, ...] | None] = ContextVar(
+    "forced_provider_ids", default=None
+)
+
+
+def _route_providers(
+    enabled: list[dict[str, Any]],
+    routes: Any,
+    qtype: str,
+    has_images: bool,
+) -> list[dict[str, Any]]:
+    picked = route_providers(enabled, routes, qtype, has_images)
+    forced = _forced_provider_ids.get()
+    if not forced:
+        return picked
+    allowed = set(forced)
+    return [provider for provider in picked if str(provider.get("id")) in allowed]
 from .formula_ocr import ocr
 from .progress import ProgressStore
 from .notify import NotifyConfig, format_daily, send as notify_send
@@ -1362,21 +1383,24 @@ async def _resolve_core_impl(
 ) -> JSONResponse:
     title = (title or "").strip()
     if not title:
-        _record_failure(40001, "missing title", qtype_raw, title, [], subject, len(images or []))
+        _record_failure(40001, "missing title", qtype_raw, title, [], subject,
+                        len(images or []), images)
         return _fail(40001, "missing title")
     if len(title) > config.MAX_TITLE_LENGTH:
         title = title[: config.MAX_TITLE_LENGTH]
 
     qtype = normalize_type(qtype_raw)
     if qtype is None:
-        _record_failure(40002, f"暂不支持该题型：{qtype_raw}", qtype_raw, title, [], subject, len(images or []))
+        _record_failure(40002, f"暂不支持该题型：{qtype_raw}", qtype_raw, title, [], subject,
+                        len(images or []), images)
         return _fail(40002, f"暂不支持该题型：{qtype_raw}")
 
     options = parse_options(options_raw)
     if len(options) > config.MAX_OPTIONS_COUNT:
         options = options[: config.MAX_OPTIONS_COUNT]
     if qtype in ("single", "multiple") and len(options) < 2:
-        _record_failure(40003, "options 至少需要两个选项", qtype, title, options, subject, len(images or []))
+        _record_failure(40003, "options 至少需要两个选项", qtype, title, options, subject,
+                        len(images or []), images)
         return _fail(40003, "options 至少需要两个选项")
 
     subject = _pick_subject(subject, title, options)
@@ -1558,7 +1582,7 @@ async def _resolve_core_impl(
         if answer_mismatch:
             _record_failure(
                 40005, "题库答案与当前选项不匹配", qtype, title, options, subject,
-                len(images or []),
+                len(images or []), images,
             )
 
     if local and not pending_local:
@@ -1628,7 +1652,7 @@ async def _resolve_official(
                     qtype, title, options, prompt_title, prompt_options_raw,
                     images, image_hash, context, opts,
                 )
-                providers = route_providers(
+                providers = _route_providers(
                     enabled, opts.get("routes"), qtype, bool(check_images)
                 )
                 if providers:
@@ -1889,7 +1913,7 @@ async def _resolve_ai(
 
     # 待确认题：每次重新问 AI，把答案累积到题库；连续 2 次一致自动采纳
     if pending_local:
-        providers = route_providers(
+        providers = _route_providers(
             store.enabled(), opts.get("routes"), qtype, bool(used_images)
         )
         trace_store.stage(
@@ -1901,7 +1925,8 @@ async def _resolve_ai(
         )
         if not providers:
             stats.bump("errors")
-            _record_failure(50002, "没有启用的 AI", qtype, title, options, subject, len(images or []))
+            _record_failure(50002, "没有启用的 AI", qtype, title, options, subject,
+                            len(images or []), images)
             return _fail(50002, "还没有启用任何 AI，请打开 /admin 添加一个")
         if unit_mode and used_images:
             providers = _pick_vision(providers)
@@ -1930,7 +1955,8 @@ async def _resolve_ai(
         if answer is None:
             stats.bump("errors")
             reason = _fail_reason(50001, errors, options)
-            _record_failure(50001, reason, qtype, title, options, subject, len(images or []))
+            _record_failure(50001, reason, qtype, title, options, subject,
+                            len(images or []), images)
             return _fail(50001, reason)
         answer = _apply_conservative(qtype, answer, bool(opts.get("multiple_conservative")))
         confidence = meta.get("confidence")
@@ -2056,7 +2082,7 @@ async def _resolve_ai(
             }
         )
 
-    providers = route_providers(
+    providers = _route_providers(
         store.enabled(), opts.get("routes"), qtype, bool(used_images)
     )
     trace_store.stage(
@@ -2067,7 +2093,8 @@ async def _resolve_ai(
     )
     if not providers:
         stats.bump("errors")
-        _record_failure(50002, "没有启用的 AI", qtype, title, options, subject, len(images or []))
+        _record_failure(50002, "没有启用的 AI", qtype, title, options, subject,
+                        len(images or []), images)
         return _fail(50002, "还没有启用任何 AI，请打开 /admin 添加一个")
     if unit_mode and used_images:
         # 单元投票也必须走视觉模型白名单：给不支持图片的模型发图只会换来超时/空答案，
@@ -2100,7 +2127,8 @@ async def _resolve_ai(
     if answer is None:
         stats.bump("errors")
         reason = _fail_reason(50001, errors, options)
-        _record_failure(50001, reason, qtype, title, options, subject, len(images or []))
+        _record_failure(50001, reason, qtype, title, options, subject,
+                        len(images or []), images)
         return _fail(50001, reason)
 
     answer = _apply_conservative(qtype, answer, bool(opts.get("multiple_conservative")))
@@ -2423,7 +2451,7 @@ async def _resolve(
                 message = f"答案可靠性不足，已弃答：{reason or '未形成独立模型共识'}"
                 _record_failure(
                     ABSTAIN_CODE, message, qtype_raw, title,
-                    parse_options(options_raw), subject, len(images or []),
+                    parse_options(options_raw), subject, len(images or []), images,
                 )
                 return _fail(ABSTAIN_CODE, message)
             payload["data"] = data
@@ -2520,6 +2548,7 @@ async def _vote_answer(provider: dict[str, Any], qtype: str, options: list[str],
 def _record_failure(
     code: int, message: str, qtype: str | None, title: str,
     options: list[str] | None, subject: Any, images: int,
+    image_urls: list[str] | None = None,
 ) -> None:
     try:
         failures.add(
@@ -2537,6 +2566,7 @@ def _record_failure(
                             for o in (options or [])][: config.MAX_OPTIONS_COUNT],
                 "subject": str(subject or ""),
                 "images": int(images or 0),
+                "image_urls": [str(url)[:500] for url in (image_urls or [])][:4],
                 "message": str(message or "")[:300],
             }
         )
@@ -3830,6 +3860,66 @@ async def api_clear_failures() -> dict[str, Any]:
 async def api_delete_failure(at: float) -> dict[str, Any]:
     """删掉单条失败记录（按时间戳定位）。"""
     return {"removed": failures.remove(at)}
+
+
+@app.post("/api/failures/retry", dependencies=[Depends(require_token)])
+async def api_retry_failure(request: Request) -> JSONResponse:
+    """按指定模型重做一道题：题干取自请求体或失败记录，成功后自动销账。"""
+    body = await _json_body(request)
+    title = str(body.get("title") or "").strip()
+    if not title:
+        return _fail(40001, "missing title")
+    qtype = str(body.get("type") or "single")
+    options = body.get("options") or []
+    subject = str(body.get("subject") or "")
+    raw_images = [str(item) for item in (body.get("images") or []) if str(item).strip()]
+    if not raw_images:
+        key = question_key({"title": title, "options": options})
+        for item in failures.all():
+            if question_key(item) == key:
+                raw_images = [str(url) for url in (item.get("image_urls") or [])]
+                break
+    if not raw_images:
+        # OCS 有时把图片地址直接拼在题干里，重做时按图片处理才是真的重来。
+        raw_images = extract_inline_urls(title)
+    remote = [url for url in raw_images if url.startswith(("http://", "https://"))]
+    images = _parse_images([url for url in raw_images if url not in remote])
+    if remote:
+        images.extend(await fetch_inline_images(remote))
+
+    wanted = [str(item).strip() for item in (body.get("providers") or [])
+              if str(item).strip()]
+    available = {str(provider.get("id")) for provider in store.enabled()}
+    chosen = [pid for pid in wanted if pid in available]
+    if wanted and not chosen:
+        return _fail(50002, "指定的模型都不可用")
+
+    token = _forced_provider_ids.set(tuple(chosen) if chosen else None)
+    try:
+        response = await _resolve_core(title, qtype, options, images, subject=subject)
+    finally:
+        _forced_provider_ids.reset(token)
+    try:
+        data = json.loads(response.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+        return _fail(50000, "重做结果无法解析")
+    payload = data.get("data") or {}
+    answer = str(payload.get("answer") or "")
+    if int(data.get("code") or 0) == 0 and answer:
+        removed = failures.resolve(title, options)
+        return JSONResponse({
+            "code": 0,
+            "answer": answer,
+            "match": str(payload.get("match") or ""),
+            "providers": chosen,
+            "images": len(images),
+            "resolved": removed,
+        })
+    return JSONResponse({
+        "code": int(data.get("code") or 50000),
+        "message": str(data.get("message") or "重做失败"),
+        "reliability": str(payload.get("reliability") or ""),
+    })
 
 
 def _tool_versions() -> dict[str, str]:
