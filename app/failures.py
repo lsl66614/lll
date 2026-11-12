@@ -184,6 +184,29 @@ class FailureLog:
             self._items = self._items[: self.limit]
             self._save()
 
+    def update(self, at: float, **fields: Any) -> dict[str, Any] | None:
+        """按时间戳定位一条失败记录并更新字段（自动重试的计数/下次时间）。"""
+        with self._lock:
+            for item in self._items:
+                if abs(float(item.get("at") or 0) - float(at)) < 1e-6:
+                    item.update(fields)
+                    self._save()
+                    return dict(item)
+        return None
+
+    def update_by_key(self, entry: dict[str, Any], **fields: Any) -> dict[str, Any] | None:
+        """按「题干 + 选项」定位并更新：重试失败会重写 at，不能再拿旧时间戳找。"""
+        key = question_key(entry)
+        if key[0] == "empty":
+            return None
+        with self._lock:
+            for item in self._items:
+                if question_key(item) == key:
+                    item.update(fields)
+                    self._save()
+                    return dict(item)
+        return None
+
     def resolve(self, title: Any, options: Any) -> int:
         """题目已经答出来了：移除对应的失败记录，返回删除条数。"""
         if not _norm_text(title):

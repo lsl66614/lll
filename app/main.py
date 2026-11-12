@@ -4004,6 +4004,63 @@ async def api_retry_failure(request: Request) -> JSONResponse:
     })
 
 
+async def _retry_item_once(item: dict[str, Any]) -> bool:
+    """按失败记录里的题干/图片重跑一次；成功即销账。"""
+    title = str(item.get("title") or "").strip()
+    if not title:
+        return False
+    raw_images = [str(url) for url in (item.get("image_urls") or [])]
+    if not raw_images:
+        raw_images = extract_inline_urls(title)
+    remote = [url for url in raw_images if url.startswith(("http://", "https://"))]
+    images = _parse_images([url for url in raw_images if url not in remote])
+    if remote:
+        images.extend(await fetch_inline_images(remote))
+    response = await _resolve_core(
+        title, str(item.get("type") or "single"), item.get("options") or [], images,
+        subject=str(item.get("subject") or ""),
+    )
+    try:
+        data = json.loads(response.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+        return False
+    payload = data.get("data") or {}
+    if int(data.get("code") or 0) == 0 and payload.get("answer"):
+        failures.resolve(title, item.get("options") or [])
+        return True
+    return False
+
+
+async def _auto_retry_once(now: float | None = None) -> dict[str, int]:
+    """扫一遍到期且可重试的失败项，逐题重做，失败按 1/5/15 分钟退避。"""
+    moment = time.time() if now is None else float(now)
+    max_attempts = max(1, int(config.AUTO_RETRY_MAX_ATTEMPTS))
+    backoffs = tuple(config.AUTO_RETRY_BACKOFFS) or (60, 300, 900)
+    result = {"tried": 0, "ok": 0, "failed": 0}
+    due = [
+        item for item in failures.all()
+        if item.get("retryable")
+        and int(item.get("retry_count") or 0) < max_attempts
+        # 从没自动重试过的题，至少要等过一个退避档，避免刚失败就立刻再打一遍。
+        and float(item.get("retry_at") or (float(item.get("at") or 0) + backoffs[0])) <= moment
+    ]
+    for item in due:
+        result["tried"] += 1
+        try:
+            ok = await _retry_item_once(item)
+        except Exception:  # noqa: BLE001 - 单题异常不影响其它题
+            ok = False
+        if ok:
+            result["ok"] += 1
+            continue
+        result["failed"] += 1
+        count = int(item.get("retry_count") or 0) + 1
+        delay = backoffs[min(count - 1, len(backoffs) - 1)]
+        # 重试失败会把同一条记录重新写一遍（at 变成现在），所以按题目键更新。
+        failures.update_by_key(item, retry_count=count, retry_at=time.time() + delay)
+    return result
+
+
 def _tool_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
     for filename in os.listdir(config.TOOLS_DIR):
@@ -4283,6 +4340,28 @@ async def _memory_scheduler_startup() -> None:
 
 
 @app.on_event("startup")
+async def _auto_retry_scheduler_startup() -> None:
+    """后台自动重做失败题：按退避到期扫一遍，成功后自动销账。
+
+    先等 90 秒再开跑，避开启动时模型池刚初始化的抖动期；单轮内部逐题
+    串行，避免同时打满上游把刚恢复的模型又拖进冷却。
+    """
+    if not config.AUTO_RETRY_ENABLED:
+        return
+
+    async def loop() -> None:
+        await asyncio.sleep(90)
+        while True:
+            try:
+                await _auto_retry_once()
+            except Exception:  # noqa: BLE001
+                pass
+            await asyncio.sleep(max(30, int(config.AUTO_RETRY_INTERVAL_SECONDS)))
+
+    asyncio.create_task(loop())
+
+
+@app.on_event("startup")
 async def _official_truth_startup() -> None:
     """结果页真值索引后台预热，冲突自动裁决时不必现建（快照变了会自动重建）。"""
 
@@ -4465,6 +4544,24 @@ async def api_solve_image(request: Request) -> dict[str, Any]:
         status_code=502, detail="全部 AI 调用失败：" + "；".join(errors[:3]))
 
 
+def _snapshot_feedback_items(parsed: list[dict[str, Any]], reason: str) -> list[dict[str, Any]]:
+    """挑出可写库的反馈题。
+
+    默认只认答案块可见的结果页。quizscore 分数页例外：选择/判断不渲染
+    答案，但填空题的正确答案会以 analysisInfo.f-dn 的形式留在 DOM 里
+    （实测 10/10 命中）。只在 reason=quizscore 时放行隐藏块，且必须有
+    真实答案；examMode 的隐藏值在 parse_result_html 里已被排除。
+    """
+    items = [item for item in parsed if item.get("analysis_visible")]
+    if reason == "quizscore":
+        items += [
+            item for item in parsed
+            if item.get("analysis_hidden")
+            and (item.get("correct_text") or item.get("correct_letters"))
+        ]
+    return items
+
+
 @app.post("/api/snapshot", dependencies=[Depends(require_token)])
 async def api_snapshot(request: Request) -> dict[str, Any]:
     body = await _json_body(request)
@@ -4480,11 +4577,11 @@ async def api_snapshot(request: Request) -> dict[str, Any]:
     # analysisInfo/「正确答案」字样，但答案是隐藏的占位或错位值，直接
     # 当反馈会把正确官方答案冲成错误答案。
     parsed = parse_result_html(html) if "u-questionItem" in html else []
-    visible = [item for item in parsed if item.get("analysis_visible")]
+    visible = _snapshot_feedback_items(parsed, reason)
     if visible:
         feedback = apply_feedback(bank, visible, None, False, on_verdict=_verdict_sink, on_official=_official_sink,
                                   scene=_infer_scene(body.get("scene"), body.get("title"), body.get("url"), str(html)[:300]),
-                                  via="page")
+                                  via="page", allow_hidden=(reason == "quizscore"))
         feedback["parsed"] = len(visible)
 
     if not feedback and reason not in ("manual", "quizscore"):
