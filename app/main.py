@@ -242,6 +242,7 @@ class Stats:
         self.batch_requests = 0
         self.batch_ai_calls = 0
         self.bank_hits = 0
+        self.title_filled = 0
         self.memory_hits = 0
         self.web_search = 0
         self.web_hits = 0
@@ -270,6 +271,7 @@ class Stats:
             self.batch_requests = int(data.get("batch_requests") or 0)
             self.batch_ai_calls = int(data.get("batch_ai_calls") or 0)
             self.bank_hits = int(data.get("bank_hits") or 0)
+            self.title_filled = int(data.get("title_filled") or 0)
             self.memory_hits = int(data.get("memory_hits") or 0)
             self.web_search = int(data.get("web_search") or 0)
             self.web_hits = int(data.get("web_hits") or 0)
@@ -301,6 +303,7 @@ class Stats:
                 "batch_requests": self.batch_requests,
                 "batch_ai_calls": self.batch_ai_calls,
                 "bank_hits": self.bank_hits,
+                "title_filled": self.title_filled,
                 "memory_hits": self.memory_hits,
                 "failovers": self.failovers,
                 "errors": self.errors,
@@ -323,7 +326,9 @@ class Stats:
 
     def bump(self, field: str, amount: int = 1) -> None:
         with self._lock:
-            setattr(self, field, getattr(self, field) + amount)
+            # 计数器漏声明时不能让一次答题直接 500：缺失按 0 起算（2026-11-12
+            # 实测 title_filled 未声明，题干补全一命中就整题 AttributeError）。
+            setattr(self, field, int(getattr(self, field, 0) or 0) + amount)
             self._save()
 
     def _slot(self, provider: dict[str, Any]) -> dict[str, Any]:
