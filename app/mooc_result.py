@@ -125,13 +125,20 @@ def parse_result_html(html: str) -> list[dict[str, Any]]:
         analysis_match = re.search(
             r'<div class="([^"]*analysisInfo[^"]*)"([^>]*)>', block
         )
-        analysis_visible = bool(
+        analysis_hidden = bool(
             analysis_match
             and "examMode" not in block_class
-            and not re.search(r"(^|\s)f-dn(\s|$)", analysis_match.group(1))
+            and re.search(r"(^|\s)f-dn(\s|$)", analysis_match.group(1))
+        )
+        # f-dn 只代表 CSS 隐藏，不代表答案不可信：实测 quizscore 结果页里，
+        # 填空题的正确答案就留在 analysisInfo.answrong.f-dn 里（选择/判断
+        # 则根本不渲染答案节点）。是否采纳交给调用方（allow_hidden）；
+        # examMode 一律不产出，因为它的隐藏值本身就是占位/错位的。
+        analysis_visible = bool(
+            analysis_match and "examMode" not in block_class and not analysis_hidden
         )
         tt2 = tt3 = None
-        if analysis_visible:
+        if analysis_visible or analysis_hidden:
             end = block.find("</div>", analysis_match.end())
             segment = block[analysis_match.start():end if end >= 0 else len(block)]
             tt2 = re.search(r'class="[^"]*tt2[^"]*"[^>]*>([^<]*)<', segment)
@@ -179,9 +186,12 @@ def parse_result_html(html: str) -> list[dict[str, Any]]:
                 "is_correct": "选对" in status_text,
                 "blank": "没有选择" in status_text or not selected,
                 "status_text": status_text,
-                # 是否为「答案块可见」的结果页；False 表示答题页的隐藏占位，
-                # 只能用于诊断，不能当官方反馈写库。
+                # 是否为「答案块可见」的结果页；False 表示答案块被隐藏或页
+                # 面是答题页。隐藏块默认只用于诊断，除非调用方显式允许。
                 "analysis_visible": analysis_visible,
+                # 答案块存在但被 CSS 隐藏（quizscore 结果页的填空题会这样）。
+                # 默认仍然跳过；只有分数页回捞时才允许写库。
+                "analysis_hidden": analysis_hidden,
             }
         )
     return items
@@ -236,7 +246,8 @@ def _answers_match(qtype: str, old: str, official: str, options: list[str]) -> b
 
 
 def apply_feedback(bank, items: list[dict[str, Any]], subject: str | None = None, dry_run: bool = False,
-                   on_verdict=None, on_official=None, scene: str = "", via: str = "") -> dict[str, Any]:
+                   on_verdict=None, on_official=None, scene: str = "", via: str = "",
+                   allow_hidden: bool = False) -> dict[str, Any]:
     result = {"applied": 0, "created": 0, "updated": 0, "marked_wrong": 0,
               "aligned": 0, "skipped": 0, "details": []}
     subj = str(subject or "").strip() or DEFAULT_SUBJECT
@@ -275,8 +286,11 @@ def apply_feedback(bank, items: list[dict[str, Any]], subject: str | None = None
         if not isinstance(raw, dict):
             result["skipped"] += 1
             continue
-        if raw.get("analysis_visible") is False:
+        if raw.get("analysis_visible") is False and not (
+                allow_hidden and raw.get("analysis_hidden")):
             # 答题页的隐藏答案块，不是官方反馈；只用于诊断，禁止写库。
+            # 唯一的例外是分数页回捞（allow_hidden=True），且只放行
+            # parse_result_html 标记为 analysis_hidden 的块。
             result["skipped"] += 1
             continue
         qtype = normalize_type(raw.get("type"))
