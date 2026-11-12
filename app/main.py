@@ -986,6 +986,41 @@ _RECENT_FAILURE_LIMIT = 2
 _recent_failures: dict[str, list[float]] = {}
 _recent_failures_lock = threading.Lock()
 
+# 超时单独计一套：慢模型往往一直慢，60 秒窗口一过又会被拉回来等满预算。
+_RECENT_TIMEOUT_WINDOW = 600.0
+_RECENT_TIMEOUT_LIMIT = 2
+_recent_timeouts: dict[str, list[float]] = {}
+_recent_timeouts_lock = threading.Lock()
+
+
+def _mark_timeout(provider_id: str) -> None:
+    key = str(provider_id or "")
+    if not key:
+        return
+    now = time.time()
+    with _recent_timeouts_lock:
+        rows = [
+            moment for moment in _recent_timeouts.get(key, [])
+            if now - moment < _RECENT_TIMEOUT_WINDOW
+        ]
+        rows.append(now)
+        _recent_timeouts[key] = rows
+
+
+def _in_timeout_cooldown(provider_id: str) -> bool:
+    """10 分钟内连续超时 2 次，就先别让这道题再等它。"""
+    key = str(provider_id or "")
+    if not key:
+        return False
+    now = time.time()
+    with _recent_timeouts_lock:
+        rows = [
+            moment for moment in _recent_timeouts.get(key, [])
+            if now - moment < _RECENT_TIMEOUT_WINDOW
+        ]
+        _recent_timeouts[key] = rows
+        return len(rows) >= _RECENT_TIMEOUT_LIMIT
+
 
 def _mark_failure(provider_id: str) -> None:
     """记录一次模型调用失败，供实时熔断使用。"""
@@ -2497,7 +2532,12 @@ def _fail_reason(code: int, errors: list[str], options: list[str]) -> str:
 
 def _pick_vision(providers: list[dict[str, Any]]) -> list[dict[str, Any]]:
     preferred = [p for p in providers if p.get("vision") == "yes"]
-    return preferred or [p for p in providers if p.get("vision") != "no"]
+    pool = preferred or [p for p in providers if p.get("vision") != "no"]
+    fresh = [
+        provider for provider in pool
+        if not _in_timeout_cooldown(str(provider.get("id") or ""))
+    ]
+    return fresh or pool
 
 
 _semaphore: asyncio.Semaphore | None = None
@@ -2596,6 +2636,7 @@ async def _call_one(
     except asyncio.TimeoutError:
         stats.failure(provider, f"超时（>{budget:.0f}s）")
         _mark_failure(str(provider.get("id") or ""))
+        _mark_timeout(str(provider.get("id") or ""))
         trace_store.model_end(
             trace_entry, elapsed_ms=int((time.perf_counter() - started) * 1000),
             error=f"超时（>{budget:.0f}s）", reasoning=last_reasoning(), usage=last_usage(),
