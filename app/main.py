@@ -1416,6 +1416,7 @@ async def _resolve_core_impl(
     subject: str | None = None,
     context: str | None = None,
 ) -> JSONResponse:
+    request_started = time.perf_counter()
     title = (title or "").strip()
     if not title:
         _record_failure(40001, "missing title", qtype_raw, title, [], subject,
@@ -1647,6 +1648,7 @@ async def _resolve_core_impl(
         prompt_title=prompt_title,
         prompt_options_raw=prompt_options_raw,
         strict_official=strict_official,
+        request_started=request_started,
     )
     if used_snapshot and snapshot_hit is not None:
         _record_snapshot_answer(snapshot_hit, response)
@@ -1889,8 +1891,11 @@ async def _resolve_ai(
     prompt_title: str | None,
     prompt_options_raw: Any,
     strict_official: bool,
+    request_started: float | None = None,
 ) -> JSONResponse:
     """待确认复核、缓存与多模型作答（含单元投票/交叉验证/置信度重采样）。"""
+    if request_started is None:
+        request_started = time.perf_counter()
     cross_enabled = bool(opts.get("cross_check")) and not unit_mode
     vote_enabled = bool(opts.get("low_conf_vote")) and not unit_mode
     # 题干补全：我们早期把请求题干截到 300 字，截掉的尾部往往正是
@@ -2024,7 +2029,7 @@ async def _resolve_ai(
         elif cross_enabled and meta.get("cross") == "agree":
             # 两个不同模型一致：跳过 3 采样，但本次只记 1 次确认
             consensus = "cross"
-        elif vote_enabled:
+        elif vote_enabled and _sampling_allowed(request_started, opts):
             voted, vote = await _vote_answer(provider, qtype, options, messages)
             if voted:
                 answer = voted
@@ -2224,7 +2229,7 @@ async def _resolve_ai(
                                        source="ai", via=provider["name"])
         else:
             # 两模型不一致（或自报低置信）：用同模型 3 采样裁决首答
-            if vote_enabled or low_conf:
+            if (vote_enabled or low_conf) and _sampling_allowed(request_started, opts):
                 voted, vote = await _vote_answer(provider, qtype, options, messages)
             if vote and voted == answer:
                 bank.upsert_calibrated(qtype, title, options, answer, subject, adopted=False,
@@ -2237,7 +2242,8 @@ async def _resolve_ai(
                     cross_result = "voted-disagree"
     elif low_conf:
         # 单模型自报低置信：同一模型 3 采样，≥2 次一致才采纳
-        voted, vote = await _vote_answer(provider, qtype, options, messages)
+        if _sampling_allowed(request_started, opts):
+            voted, vote = await _vote_answer(provider, qtype, options, messages)
         if voted:
             answer = voted
             bank.upsert_calibrated(qtype, title, options, answer, subject, adopted=False,
@@ -2538,6 +2544,19 @@ def _pick_vision(providers: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not _in_timeout_cooldown(str(provider.get("id") or ""))
     ]
     return fresh or pool
+
+
+def _sampling_allowed(started_at: float, opts: dict[str, Any]) -> bool:
+    """3 采样是补救手段，不能把整个请求拖过客户端等待时间。"""
+    try:
+        budget = float(opts.get("sample_budget_seconds") or config.SAMPLE_BUDGET_SECONDS)
+    except (TypeError, ValueError):
+        budget = float(config.SAMPLE_BUDGET_SECONDS)
+    used = time.perf_counter() - started_at
+    if used < budget:
+        return True
+    trace_store.stage("sample", "skip", reason=f"budget {used:.0f}s >= {budget:.0f}s")
+    return False
 
 
 _semaphore: asyncio.Semaphore | None = None

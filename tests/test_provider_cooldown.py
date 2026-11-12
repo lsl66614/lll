@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -55,6 +56,19 @@ class TimeoutCooldownTests(unittest.TestCase):
             self.assertTrue(main._in_timeout_cooldown("a"))
         with mock.patch.object(main.time, "time", return_value=1000.0 + 601):
             self.assertFalse(main._in_timeout_cooldown("a"))
+
+
+class SamplingBudgetTests(unittest.TestCase):
+    def test_fresh_request_allows_sampling(self) -> None:
+        self.assertTrue(main._sampling_allowed(time.perf_counter(), {}))
+
+    def test_over_budget_skips_sampling(self) -> None:
+        self.assertFalse(main._sampling_allowed(0.0, {}))
+
+    def test_custom_budget_is_respected(self) -> None:
+        now = time.perf_counter()
+        self.assertTrue(main._sampling_allowed(now - 5, {"sample_budget_seconds": 10}))
+        self.assertFalse(main._sampling_allowed(now - 15, {"sample_budget_seconds": 10}))
 
 
 if __name__ == "__main__":

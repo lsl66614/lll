@@ -51,6 +51,7 @@ CACHE_TTL_HOURS = _float("CACHE_TTL_HOURS", 168)
 # 填空题单独用更短的缓存 TTL（0 = 沿用 CACHE_TTL_HOURS）。
 COMPLETION_CACHE_TTL_HOURS = _float("COMPLETION_CACHE_TTL_HOURS", 24)
 REQUEST_TIMEOUT_SECONDS = _int("REQUEST_TIMEOUT_SECONDS", 30)
+SAMPLE_BUDGET_SECONDS = _int("SAMPLE_BUDGET_SECONDS", 20)
 
 # 缓存重问：命中缓存但来源是 AI、且置信度低于阈值时，按概率忽略缓存重解，
 # 避免一次低质量答案被缓存钉死。概率默认 0（关闭），灰度后建议 0.1。
