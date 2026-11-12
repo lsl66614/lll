@@ -18,7 +18,7 @@ os.environ.setdefault("OCS_DATA_DIR", _TEST_DATA_DIR)
 os.environ.setdefault("BANK_DB_PATH", "")
 atexit.register(shutil.rmtree, _TEST_DATA_DIR, True)
 
-from app import main  # noqa: E402
+from app import config, main  # noqa: E402
 
 
 def _vision(pid: str) -> dict:
@@ -69,6 +69,31 @@ class SamplingBudgetTests(unittest.TestCase):
         now = time.perf_counter()
         self.assertTrue(main._sampling_allowed(now - 5, {"sample_budget_seconds": 10}))
         self.assertFalse(main._sampling_allowed(now - 15, {"sample_budget_seconds": 10}))
+
+
+class CallBudgetTests(unittest.TestCase):
+    def _provider(self, timeout: int = 60) -> dict:
+        return {"id": "p", "name": "P", "timeout": timeout}
+
+    def test_text_question_uses_request_budget(self) -> None:
+        messages = [{"role": "user", "content": "题目"}]
+        self.assertEqual(main._call_budget(self._provider(), messages),
+                         float(config.REQUEST_TIMEOUT_SECONDS))
+
+    def test_vision_question_uses_shorter_budget(self) -> None:
+        messages = [{"role": "user", "content": [
+            {"type": "text", "text": "题目"},
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA"}},
+        ]}]
+        self.assertEqual(main._call_budget(self._provider(), messages),
+                         float(config.VISION_TIMEOUT_SECONDS))
+        self.assertLess(config.VISION_TIMEOUT_SECONDS, config.REQUEST_TIMEOUT_SECONDS)
+
+    def test_provider_timeout_lower_wins(self) -> None:
+        messages = [{"role": "user", "content": [
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA"}},
+        ]}]
+        self.assertEqual(main._call_budget(self._provider(timeout=12), messages), 12.0)
 
 
 if __name__ == "__main__":

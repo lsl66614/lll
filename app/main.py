@@ -2633,13 +2633,35 @@ def _record_failure(
         pass
 
 
+def _has_image_messages(messages: list[dict]) -> bool:
+    for message in messages or []:
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list):
+            continue
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "image_url":
+                return True
+    return False
+
+
+def _call_budget(provider: dict[str, Any], messages: list[dict]) -> float:
+    """视觉题按更短的预算截断：图片推理慢的模型不该让整题等满 30 秒。"""
+    budget = min(
+        float(provider.get("timeout") or config.REQUEST_TIMEOUT_SECONDS),
+        float(config.REQUEST_TIMEOUT_SECONDS),
+    )
+    if _has_image_messages(messages):
+        budget = min(budget, float(config.VISION_TIMEOUT_SECONDS))
+    return budget
+
+
 async def _call_one(
     provider: dict[str, Any], qtype: str, options: list[str], messages: list[dict]
 ) -> tuple[str | None, float | None, int, str]:
     """返回 (答案, 自报置信度, 耗时, 错误)；错误只跳过当前模型。"""
     started = time.perf_counter()
     trace_entry = trace_store.model_start(provider)
-    budget = min(float(provider["timeout"]), float(config.REQUEST_TIMEOUT_SECONDS))
+    budget = _call_budget(provider, messages)
     try:
         reset_usage()
         # 用 asyncio.timeout 而不是 wait_for：wait_for 会另起 task，
