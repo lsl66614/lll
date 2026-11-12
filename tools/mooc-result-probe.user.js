@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MOOC Result Probe
 // @namespace    ocs-ai-gateway
-// @version      0.9.1
+// @version      0.9.2
 // @description  只读抓取中国大学MOOC测验结果页/随堂测验对错；提交后自动回捞一次整卷官方答案并上报答案发布状态，发送到本地 OCS AI 网关
 // @match        *://*.icourse163.org/*
 // @grant        GM_xmlhttpRequest
@@ -149,6 +149,16 @@
       .catch(function () { /* ignore */ });
   }
 
+  /* showAnalysis=false 时平台不给标准答案，但 DTO 可能仍带每题得分/作答：
+     原样留档到网关，才能定位「哪题错了」，不用靠总分反推。 */
+  function reportPaper(ids, paper) {
+    try {
+      postJSON('/api/quiz/paper', {
+        tid: ids.tid, aid: ids.aid, url: location.href, ver: probeVersion(), paper: paper
+      }).catch(function () { /* ignore */ });
+    } catch (e) { /* ignore */ }
+  }
+
   function collectQuizIds() {
     var found = new Map();
     try {
@@ -284,6 +294,7 @@
           return;
         }
         var list = paper.objectiveQList || paper.questions || [];
+        reportPaper(ids, paper);
         // 试卷存在但官方还没放答案（showAnalysis=false）/ 返回 0 题，都不能
         // 当成「已回捞」：标记留着，过一会儿再问。
         var published = list.length > 0 && paper.showAnalysis !== false;

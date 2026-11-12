@@ -4742,6 +4742,85 @@ async def api_quiz_status_clear() -> dict[str, Any]:
     return {"cleared": quiz_status.clear()}
 
 
+def _quiz_paper_digest(paper: dict[str, Any]) -> dict[str, Any]:
+    """把官方卷 DTO 压成诊断摘要：保留每题标量字段与选项标量。
+
+    showAnalysis=false 时平台不给标准答案，但 DTO 里可能仍带每题得分/
+    用户作答。原样留档才能判断「哪题错了」，不用靠总分反推。
+    """
+    def scalar(value: Any) -> Any:
+        if isinstance(value, str):
+            return value[:200]
+        if isinstance(value, (int, float, bool)) or value is None:
+            return value
+        return None
+
+    questions = paper.get("objectiveQList") or paper.get("questions") or []
+    rows: list[dict[str, Any]] = []
+    if isinstance(questions, list):
+        for q in questions[:200]:
+            if not isinstance(q, dict):
+                continue
+            row = {k: scalar(v) for k, v in q.items() if scalar(v) is not None}
+            opts = []
+            raw_opts = q.get("optionDtos") or []
+            if isinstance(raw_opts, list):
+                for opt in raw_opts[:20]:
+                    if not isinstance(opt, dict):
+                        continue
+                    projected = {k: scalar(v) for k, v in opt.items() if scalar(v) is not None}
+                    if projected:
+                        opts.append(projected)
+            if opts:
+                row["optionDtos"] = opts
+            rows.append(row)
+    first_keys = sorted(questions[0].keys()) if questions and isinstance(questions[0], dict) else []
+    return {
+        "paper_keys": sorted(paper.keys()),
+        "name": str(paper.get("tname") or paper.get("name") or "")[:120],
+        "showAnalysis": paper.get("showAnalysis"),
+        "submitStatus": paper.get("submitStatus"),
+        "question_count": len(questions) if isinstance(questions, list) else 0,
+        "question_keys": first_keys,
+        "questions": rows,
+    }
+
+
+@app.post("/api/quiz/paper", dependencies=[Depends(require_token)])
+async def api_quiz_paper(request: Request) -> dict[str, Any]:
+    """留档官方卷 DTO（含每题得分/作答），用于定位分数页的错题。
+
+    不解析、不写题库，只落 ``data/quiz_papers/<tid>-<aid>.json``。
+    """
+    body = await _json_body(request)
+    paper = body.get("paper")
+    if not isinstance(paper, dict):
+        raise HTTPException(status_code=400, detail="paper 必须是对象")
+    tid = str(body.get("tid") or paper.get("tid") or "")[:40]
+    aid = str(body.get("aid") or paper.get("aid") or "")[:40]
+    digest = _quiz_paper_digest(paper)
+    folder = os.path.join(str(config.DATA_DIR), "quiz_papers")
+    os.makedirs(folder, exist_ok=True)
+    safe = re.sub(r"[^0-9A-Za-z_.-]", "_", (tid + "-" + aid).strip("-"))[:80] or "unknown"
+    path = os.path.join(folder, safe + ".json")
+    with open(path, "w", encoding="utf-8") as fp:
+        json.dump(
+            {
+                "tid": tid,
+                "aid": aid,
+                "url": str(body.get("url") or "")[:500],
+                "ver": str(body.get("ver") or "")[:40],
+                "at": time.time(),
+                "digest": digest,
+            },
+            fp,
+            ensure_ascii=False,
+            indent=1,
+        )
+    return {"ok": True, "file": os.path.basename(path),
+            "questions": digest["question_count"], "keys": digest["question_keys"]}
+
+
 _formula_lock = threading.Lock()
 _formula_state: dict[str, Any] = {
     "running": False, "total": 0, "done": 0, "failed": 0, "skipped": 0,
